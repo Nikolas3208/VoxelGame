@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using VoxelGame.Entitys.Physics;
 using VoxelGame.Worlds;
 using VoxelGame.Worlds.Chunks;
-using VoxelGame.Worlds.Chunks.Tiles;
+using VoxelGame.Worlds.Chunks.Tile;
 
 namespace VoxelGame.Entitys
 {
@@ -33,23 +33,25 @@ namespace VoxelGame.Entitys
         public virtual void Update(float deltaTime)
         {
             velocity.X *= 0.99f;
-            velocity.Y += 0.44f;
+            velocity.Y += 0.55f;
 
-            var size = rect!.Size.X / TileInfo.MinTileSize;
+            var size = rect!.Size.X / InfoTile.MinTileSize;
 
             for (int i = 0; i < size; i++)
             {
-                var tile = World.GetTileByWorldPosition(new Vector2f((Position.X) + i * TileInfo.MinTileSize, Position.Y + rect.Size.Y) / TileInfo.MinTileSize);
+                var tile = World.GetTileByWorldPosition(new Vector2f((Position.X) + i * InfoTile.MinTileSize, Position.Y + rect.Size.Y) / InfoTile.MinTileSize);
 
-                if (tile != null)
+                if (tile != null && !tile.IsWall)
                 {
                     var tileRect = tile.GetFloatRect();
                     DebugRender.AddRectangle(tileRect, Color.Blue);
 
                     if (GetFloatRect().Intersects(tileRect))
                     {
+                        float offset = MathHelper.GetDistance(Position, tileRect.Position);
+
                         velocity.Y = 0;
-                        velocity.Y -= 20.44f;
+                        velocity.Y -= offset / InfoTile.MinTileSize;
                     }
                 }
             }

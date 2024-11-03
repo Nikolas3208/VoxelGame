@@ -94,5 +94,39 @@ namespace VoxelGame
 
             return result / max;
         }
+
+        public static float[] Interpolate(float[] map, int length, int octaves = 1)
+        {
+            float[] interpolateMap = new float[length];
+
+            for (int i = 0; i < octaves; i++)
+            {
+                for (int x = 1; x < length - 1; x++)
+                {
+                    interpolateMap[x] = (map[x - 1] + map[x + 1] + map[x]) / 3;
+                }
+            }
+            interpolateMap[0] = interpolateMap[1];
+            interpolateMap[length - 1] = interpolateMap[length - 2];
+
+            return interpolateMap;
+        }
+        public static float[,] Interpolate(float[,] map, int length, int octaves = 1)
+        {
+            float[,] interpolateMap = new float[length / 2, length / 2];
+
+            for (int i = 0; i < octaves; i++)
+            {
+                for (int x = 1; x < length / 2 - 1; x++)
+                {
+                    for (int y = 1; y < length / 2 - 1; y++)
+                    {
+                        interpolateMap[x, y] = (map[x - 1, y] + map[x + 1, y] + map[x, y] + map[x, y - 1] + map[x, y + 1] + map[x - 1, y - 1] + map[x + 1, y + 1] + map[x - 1, y + 1] + map[x + 1, y - 1]) / 9;
+                    }
+                }
+            }
+
+            return interpolateMap;
+        }
     }
 }

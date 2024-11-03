@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using VoxelGame.Worlds.Chunks.Tile;
 
 namespace VoxelGame
 {
@@ -11,7 +12,27 @@ namespace VoxelGame
     {
         public string? contentPath;
 
-        public static Texture Texture1 = new Texture("Contents\\Textures\\Items\\Item_0.png");
-        public static Texture Texture2 = new Texture("Contents\\Textures\\Items\\Item_4.png");
+
+        private static List<Texture> textures;
+
+        public static void LoadContent(string path)
+        {
+            textures = new List<Texture>();
+
+            int count = Directory.GetFiles(path + "Textures\\Tiles\\", "*", SearchOption.AllDirectories).Length;
+
+            for (int i = 0; i < count; i++)
+            {
+                textures.Add(new Texture(path + $"Textures\\Tiles\\Tiles_{i}.png"));
+            }
+        }
+
+        public static Texture GetTextureByTileType(TileType type)
+        {
+            if ((int)type < textures.Count)
+                return textures[(int)type];
+
+            return null;
+        }
     }
 }
