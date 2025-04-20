@@ -1,66 +1,73 @@
 ﻿using SFML.Graphics;
 using SFML.System;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using VoxelGame.Entitys.Physics;
+using VoxelGame.Physics;
 using VoxelGame.Worlds;
-using VoxelGame.Worlds.Chunks;
-using VoxelGame.Worlds.Chunks.Tile;
 
-namespace VoxelGame.Entitys
+namespace VoxelGame.Npc
 {
-    public abstract class Entity : Transformable
+    public abstract class Entity : Drawable
     {
-        protected World World;
-        protected RigidBody? RigidBody;
-        protected RectangleShape? rect;
+        private Transform _transform;
+        private Vector2f _oldPosition;
 
-        protected Vector2f velocity;
+        protected World world;
+        protected RigidBody body;
+        protected Shape shape;
 
-        public Entity(World world)
-        {
-            World = world;
-        }
+        protected bool isAir = false;
 
-        public virtual void Start()
-        {
-
-        }
-
-        public virtual void Update(float deltaTime)
-        {
-            velocity.X *= 0.99f;
-            velocity.Y += 0.55f;
-
-            var size = rect!.Size.X / InfoTile.MinTileSize;
-
-            for (int i = 0; i < size; i++)
+        public Vector2f Position
+        { 
+            get => body.Position;
+            set
             {
-                var tile = World.GetTileByWorldPosition(new Vector2f((Position.X) + i * InfoTile.MinTileSize, Position.Y + rect.Size.Y) / InfoTile.MinTileSize);
+                _oldPosition = body.Position;
+                body.Position = value;
+            }
+        }
 
-                if (tile != null && !tile.IsWall)
-                {
-                    var tileRect = tile.GetFloatRect();
-                    DebugRender.AddRectangle(tileRect, Color.Blue);
+        public Entity(RigidBody rigidBody, World world)
+        {
+            this.world = world;
 
-                    if (GetFloatRect().Intersects(tileRect))
-                    {
-                        float offset = MathHelper.GetDistance(Position, tileRect.Position);
+            body = rigidBody;
+            body.Layer = CollisionLayer.Entity;
+            body.CollidesWith = CollisionLayer.Ground | CollisionLayer.Enemy;
+            body.Collided += OnCollision;
 
-                        velocity.Y = 0;
-                        velocity.Y -= offset / InfoTile.MinTileSize;
-                    }
-                }
+            if (body.ColliderType == ColliderType.Circle)
+            {
+                shape = new CircleShape(body.GetCircle().Radius);
+            }
+            else
+            {
+                shape = new RectangleShape(body.GetPolygon().Size);
+                shape.Origin = body.GetPolygon().Size / 2;
             }
 
-            Position += velocity * deltaTime;
+            _transform = new Transform(1, 0, 0, 0, 1, 0, 0, 0, 1);
         }
 
-        public FloatRect GetFloatRect() => new FloatRect(new Vector2f(Position.X, Position.Y + rect!.Size.Y), rect.Size);
+        public virtual void OnCollision(BodyCollidedEvent e)
+        {
+            if (e.Body.Layer == CollisionLayer.Ground && e.Normal.Y != 0)
+            {
+                isAir = false;
+            }
+        }
 
-        public abstract void Draw(RenderTarget target, RenderStates states);
+        public virtual void Draw(RenderTarget target, RenderStates states)
+        {
+            states.Transform *= new Transform(1, 0, Position.X, 0, 1, Position.Y, 0, 0, 1);
+
+            shape.Draw(target, states);
+        }
+
+        public RigidBody GetBody()
+        {
+            return body;
+        }
+
+        public abstract void Update(float deltaTime);
     }
 }

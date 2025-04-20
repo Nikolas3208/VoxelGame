@@ -6,7 +6,7 @@ namespace VoxelGame
     {
         public static void Main()
         {
-            Game game = new Game(new WindowSettings { Title = "VoxelGame", VideoMode = VideoMode.DesktopMode, Styles = Styles.Default });
+            Game game = new Game(VideoMode.DesktopMode, "Voxel Game");
             game.Run();
         }
     }
