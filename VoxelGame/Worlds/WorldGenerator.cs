@@ -114,14 +114,17 @@ public static class WorldGenerator
                 if (tile != null && tile.Type == TileType.Grass)
                 {
                     // Шанс на дерево
-                    if (_perlin.Random.NextDouble() < 0.08) // 8%
+                    if (_perlin.Random.NextDouble() < 0.09) // 9%
                     {
                         int treeHeight = _perlin.Random.Next(6, 12);
 
                         // Ставим ствол
                         for (int h = 1; h <= treeHeight; h++)
                         {
-                            chunk.SetTile(x, y - h, TileType.Wood);
+                            if(!chunk.SetTile(x, y - h, TileType.Wood))
+                            {
+                                world.GetChunkByWorldPosition(chunk.Position - new Vector2f(0, 1))?.SetTile(x, Chunk.ChunkSize + (y - h), TileType.Wood);
+                            }
                         }
 
                         // Ставим листву
@@ -139,7 +142,11 @@ public static class WorldGenerator
                                     // Только если нет другого блока
                                     if (chunk.GetTile(leafX, leafY) == null)
                                     {
-                                        chunk.SetTile(leafX, leafY, TileType.Leaves);
+                                        if (!chunk.SetTile(leafX, leafY, TileType.Leaves))
+                                        {
+                                            if (world.GetChunkByWorldPosition(chunk.Position - new Vector2f(0, 1))?.GetTile(leafX, Chunk.ChunkSize + leafY) == null)
+                                                world.GetChunkByWorldPosition(chunk.Position - new Vector2f(0, 1))?.SetTile(leafX, Chunk.ChunkSize + leafY, TileType.Leaves);
+                                        }
                                     }
                                     else
                                     {

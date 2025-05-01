@@ -9,6 +9,8 @@
         Wood = 3,
         Leaves = 4,
         IronOre = 5,
-        Door = 6
+        Board = 6,
+        Door = 7,
+        Workbench = 8
     }
 }

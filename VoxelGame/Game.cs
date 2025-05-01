@@ -24,6 +24,8 @@ namespace VoxelGame
                 _windowSize = new Vector2u(e.Width, e.Height);
             };
 
+            _windowSize = _window.Size;
+
             _world = WorldGenerator.GenerateWorld(200, 200);
         }
 
@@ -52,17 +54,21 @@ namespace VoxelGame
         {
             _mousePos = (Vector2f)Mouse.GetPosition(_window);
             _world.Update(deltaTime);
-
-            var cameraCenterPosition = _cameraPosition - (Vector2f)_window.Size / 2;
-
-            var view = new View(new FloatRect(cameraCenterPosition, (Vector2f)_window.Size));
-            _window.SetView(view);
         }
 
         public void Draw(RenderTarget target, RenderStates states)
         {
+            var cameraCenterPosition = _cameraPosition - (Vector2f)_window.Size / 2;
+            var view = new View(new FloatRect(cameraCenterPosition, (Vector2f)_window.Size));
+            _window.SetView(view);
+
             _world.Draw(target, states);
             DebugRender.Draw(target, states);
+        }
+
+        public static void SetCameraPosition(Vector2f position)
+        {
+            _cameraPosition = position;
         }
 
         public static Vector2u GetWindowSize() => _windowSize;

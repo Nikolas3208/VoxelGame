@@ -1,5 +1,4 @@
 using SFML.System;
-using VoxelGame.Physics.Collision.Colliders;
 
 namespace VoxelGame.Meths;
 
@@ -86,33 +85,6 @@ public class MathHelper
     {
         return NearlyEqual(a.X, b.X) && NearlyEqual(a.Y, b.Y);
     }
-
-    public static float GetAreaRegularPolygon(Polygon polygon)
-    {
-        float s = 0;
-
-        for (int i = 0; i < polygon.GetVertexCount(); i++)
-        {
-            var p1 = polygon.GetVertices()[i];
-            var p2 = polygon.GetVertices()[(i + 1) % polygon.GetVertexCount()];
-
-            s += p1.X * p2.Y;
-        }
-
-        for (int i = 0; i < polygon.GetVertexCount(); i++)
-        {
-            var p1 = polygon.GetVertices()[i];
-            var p2 = polygon.GetVertices()[(i + 1) % polygon.GetVertexCount()];
-
-            s -= p1.Y * p2.X;
-        }
-
-        if (s < 0)
-            return -s / 2;
-
-        return s / 2;
-    }
-
 }
 
 

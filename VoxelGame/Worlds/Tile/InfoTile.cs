@@ -25,6 +25,11 @@ public class InfoTile
     public Vector2f Size { get; set; } = new Vector2f(TileSize, TileSize);
 
     /// <summary>
+    /// Прочность плитки
+    /// </summary>
+    public float Strength { get; set; } = 1.0f;
+
+    /// <summary>
     /// Плитка
     /// </summary>
     /// <param name="type"> Тип плитки </param>
@@ -43,4 +48,19 @@ public class InfoTile
         Size = size;
     }
 
+    public InfoTile(TileType type, float strength) : this(type)
+    {
+        Strength = strength;
+    }
+
+    public InfoTile BreakingTail(float damage)
+    {
+        Strength -= damage;
+        if (Strength <= 0)
+        {
+            return null;
+        }
+
+        return this;
+    }
 }

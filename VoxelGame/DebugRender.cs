@@ -1,6 +1,6 @@
 ﻿using SFML.Graphics;
 using SFML.System;
-using VoxelGame.Physics.Collision.Colliders;
+using VoxelGame.Physics;
 
 namespace VoxelGame
 {
@@ -26,21 +26,10 @@ namespace VoxelGame
             AddRectangle(rect.Left, rect.Top, rect.Width, rect.Height, color);
         }
 
-        public static void AddRectangle(Polygon polygon)
+        public static void AddRectangle(AABB aabb, Color color)
         {
-            Vertex[] vertices = new Vertex[polygon.GetTriangleCount()];
-
-            for (int i = 0; i < vertices.Length; i++)
-            {
-                vertices[i] = new Vertex(polygon.GetVertex(polygon.GetTriangle(i)));
-            }
-
-            var vertexBuffer = new VertexBuffer((uint)vertices.Length, PrimitiveType.Triangles, VertexBuffer.UsageSpecifier.Static);
-            vertexBuffer.Update(vertices);
-
-            objects.Add(vertexBuffer);
+            AddRectangle(aabb.Min.X, aabb.Min.Y, aabb.Max.X - aabb.Min.X, aabb.Max.Y - aabb.Min.Y, color);
         }
-
 
         public static void AddText(Font font, Vector2f pos, string mess)
         {

@@ -51,6 +51,8 @@ namespace VoxelGame.UI
 
         public override void Draw(RenderTarget target, RenderStates states)
         {
+            states.Transform *= Transform;
+
             foreach (var child in childs)
                 child.Draw(target, states);
         }

@@ -2,7 +2,6 @@
 using SFML.System;
 using VoxelGame.Item;
 using VoxelGame.Physics;
-using VoxelGame.Physics.Collision.Colliders;
 using VoxelGame.Resources;
 using VoxelGame.Worlds.Tile;
 
@@ -28,7 +27,7 @@ namespace VoxelGame.Worlds
         /// <summary>
         /// Список тел
         /// </summary>
-        private List<RigidBody> _bodies;
+        private List<AABB> _colliders;
 
         /// <summary>
         /// Сетка чанка
@@ -55,7 +54,7 @@ namespace VoxelGame.Worlds
 
             _tiles = new InfoTile[ChunkSize * ChunkSize];
 
-            _bodies = new List<RigidBody>(ChunkSize * ChunkSize);
+            _colliders = new List<AABB>(ChunkSize * ChunkSize);
             _chunkMesh = new ChunkMesh(this);
         }
 
@@ -76,13 +75,47 @@ namespace VoxelGame.Worlds
             int index = x * ChunkSize + y;
 
             // Если плитка не null, то устанавливаем ей индекс
-            tile!.Id = index;
+            if (tile != null)
+            {
+                tile!.Id = index;
+            }
+            else if (_tiles[index] != null && IsComplate)
+            {
+                _world.DropItem(_tiles[index],
+                    new Vector2f(x, y) * InfoTile.TileSize + Position + new Vector2f(InfoTile.TileSize, InfoTile.TileSize) / 2);
+            }
 
-            // Устанавливаем плитку в массив
-            _tiles[index] = tile;
+            if (!IsComplate)
+            {
+                // Устанавливаем плитку в массив
+                _tiles[index] = tile!;
 
-            // Устанавливаем плитку в сетку чанка
-            _chunkMesh.SetTileToMesh(x, y, tile);
+                // Устанавливаем плитку в сетку чанка
+                _chunkMesh.SetTileToMesh(x, y, tile!);
+            }
+            else
+            {
+                var upTile = GetTile(x, y + 1);
+                var downTile = GetTile(x, y - 1);
+                var leftTile = GetTile(x - 1, y);
+                var rightTile = GetTile(x + 1, y);
+
+                if (upTile != null || downTile != null || leftTile != null || rightTile != null)
+                {
+                    // Устанавливаем плитку в массив
+                    _tiles[index] = tile!;
+
+                    // Устанавливаем плитку в сетку чанка
+                    _chunkMesh.SetTileToMesh(x, y, tile!);
+                }
+                else
+                    return false;
+            }
+
+            if(IsComplate)
+            {
+                GenerateColliders();
+            }
 
             return true;
         }
@@ -96,7 +129,7 @@ namespace VoxelGame.Worlds
         /// <returns> True если плитка установлена </returns>
         public bool SetTile(int x, int y, TileType type)
         {
-            return SetTile(x, y, TileByTypes.GetTileByType(type));
+            return SetTile(x, y, Tiles.GetTile(type));
         }
 
         /// <summary>
@@ -105,7 +138,7 @@ namespace VoxelGame.Worlds
         /// <param name="position"> Позиция </param>
         /// <param name="tile"> Плитка </param>
         /// <returns> True если плитка установленна </returns>
-        public bool SetTileByWorldPosition(Vector2f position, InfoTile tile)
+        public bool SetTileByWorldPosition(Vector2f position, InfoTile? tile)
         {
             int x = (int)((position.X - Position.X) / InfoTile.TileSize);
             int y = (int)((position.Y - Position.Y) / InfoTile.TileSize);
@@ -138,7 +171,7 @@ namespace VoxelGame.Worlds
         /// <returns> Плитку, null если х,у вышли за рамки чанка или если плитка null </returns>
         public InfoTile? GetTile(int x, int y)
         {
-            if (x < 0 || x >= ChunkSize || y < 0 || y >= ChunkSize)
+            if(x < 0 || x >= ChunkSize || y < 0 || y >= ChunkSize)
                 return null;
 
             return _tiles[x * ChunkSize + y];
@@ -156,42 +189,72 @@ namespace VoxelGame.Worlds
             return GetTile(x, y);
         }
 
+        public bool BreakingTail(int x, int y, float damage)
+        {
+            var tile = GetTile(x, y);
+
+            if (tile != null)
+            {
+                if(tile.BreakingTail(damage) == null)
+                {
+                    SetTile(x, y, null);
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public bool BreakingTailByWorldPosition(Vector2f position, float damage)
+        {
+            var tile = GetTileByWorldPosition(position);
+
+            if (tile != null)
+            {
+                if (tile.BreakingTail(damage) == null)
+                {
+                    SetTileByWorldPosition(position, null);
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// Создать коллайдеры для чанка
         /// </summary>
         public void GenerateColliders()
         {
-            Vector2f start = new Vector2f(-1, -1);
+            _colliders.Clear();
+            Vector2f[] vertices = new Vector2f[4];
+
+            for (int i = 0; i < 4; i++)
+                vertices[i] = new Vector2f(-1, -1);
 
             for (int x = 0; x < ChunkSize; x++)
             {
                 for (int y = 0; y < ChunkSize; y++)
                 {
                     var tile = GetTile(x, y);
-                    var below = GetTile(x, y + 1);
+                    var upTile = GetTile(x, y + 1);
+                    var downTile = GetTile(x, y - 1);
+                    var leftTile = GetTile(x - 1, y);
+                    var rightTile = GetTile(x + 1, y);
 
-                    // Игнорируем не твёрдые плитки
+                    upTile = upTile?.Type == TileType.Wood ? null : upTile;
+                    downTile = downTile?.Type == TileType.Wood ? null : downTile;
+                    leftTile = leftTile?.Type == TileType.Wood ? null : leftTile;
+                    rightTile = rightTile?.Type == TileType.Wood ? null : rightTile;
+
                     if (tile == null || tile.Type == TileType.Wood || tile.Type == TileType.Leaves)
                         continue;
 
-                    // Если снизу пусто — значит верхняя грань открыта, создаём коллайдер
-                    if (below == null)
+                    if (upTile == null || downTile == null || leftTile == null || rightTile == null)
                     {
-                        Vector2f p0 = new Vector2f(x, y) * InfoTile.TileSize;
-                        Vector2f p1 = new Vector2f(x, y + 1) * InfoTile.TileSize;
-                        Vector2f p2 = new Vector2f(x + 1, y + 1) * InfoTile.TileSize;
-                        Vector2f p3 = new Vector2f(x + 1, y) * InfoTile.TileSize;
-
-                        var polygon = new Polygon(new List<Vector2f> { p0, p1, p2, p3 });
-
-                        var body = new RigidBody(polygon, 1, 0, BodyType.Static)
-                        {
-                            Position = Position,
-                            Layer = CollisionLayer.Ground,
-                            CollidesWith = CollisionLayer.All
-                        };
-
-                        _bodies.Add(body);
+                        _colliders.Add(new AABB(new Vector2f(x, y) * InfoTile.TileSize + Position, new Vector2f(x, y) * InfoTile.TileSize + new Vector2f(InfoTile.TileSize, InfoTile.TileSize) + Position));
                     }
                 }
             }
@@ -220,11 +283,11 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Получить список тел
+        /// Получить список колайдеров
         /// <summary>
-        public List<RigidBody> GetBodies()
+        public List<AABB> GetColliders()
         {
-            return _bodies;
+            return _colliders;
         }
     }
 }

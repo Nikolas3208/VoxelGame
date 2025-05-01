@@ -2,7 +2,7 @@
 
 namespace VoxelGame.Worlds.Tile
 {
-    public class DoorTile : InfoTile, IUsableTile
+    public class DoorTile : InfoTile
     {
         public DoorTile() : base(TileType.Door)
         {

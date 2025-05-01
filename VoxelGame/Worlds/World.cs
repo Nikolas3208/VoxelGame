@@ -1,10 +1,8 @@
 ﻿using SFML.Graphics;
 using SFML.System;
 using VoxelGame.Item;
-using VoxelGame.Npc;
 using VoxelGame.Physics;
-using VoxelGame.Physics.Collision;
-using VoxelGame.Physics.Collision.Colliders;
+using VoxelGame.Resources;
 using VoxelGame.Worlds.Tile;
 
 namespace VoxelGame.Worlds
@@ -42,11 +40,6 @@ namespace VoxelGame.Worlds
         private List<Chunk> drawbleChunk;
 
         /// <summary>
-        /// Список тел которые будут обрабатываться в физическом мире
-        /// </summary>
-        private List<RigidBody> _bodies;
-
-        /// <summary>
         /// Список сущностей
         /// </summary>
         private List<Entity> _entities;
@@ -73,17 +66,14 @@ namespace VoxelGame.Worlds
             ChumkCountY = height / Chunk.ChunkSize;
             _seed = seed;
 
-            _physicsWorld = new PhysicsWorld();
+            _physicsWorld = new PhysicsWorld(new Vector2f(0, 200));
 
             _chanks = new Chunk[ChunkCountX * ChumkCountY];
             drawbleChunk = new List<Chunk>();
-            _bodies = new List<RigidBody>();
             _entities = new List<Entity>();
             _dropItems = new List<DropItem>();
 
-            var body = new RigidBody(Polygon.BoxPolygon(32, 64), 3, 0);
-
-            _entities.Add(new Player(body, this));
+            _entities.Add(new Player(this, new AABB(32, 64)));
         }
 
         /// <summary>
@@ -145,19 +135,14 @@ namespace VoxelGame.Worlds
             return GetChunk(x, y);
         }
 
+        object lockes = new object();
+
         /// <summary>
         /// Обновление мира
         /// </summary>
         /// <param name="deltaTime"> Время кадра </param>
         public void Update(float deltaTime)
         {
-            _dropItems.ForEach(item => item.Update(deltaTime));
-
-            _bodies.Clear();
-
-            _entities.ForEach(entity => { entity.Update(deltaTime); _bodies.Add(entity.GetBody()); });
-            _dropItems.ForEach(item => { item.Update(deltaTime); _bodies.Add(item.GetBody()); });
-
             Task<List<Chunk>> chunks = Task.Run(() =>
             {
                 var drawbleChunk = new List<Chunk>();
@@ -167,50 +152,47 @@ namespace VoxelGame.Worlds
                 var TopMostTilesPos = (int)(tilePos.Item2 - tilesPerScreen.Item2);
 
 
-                for (int x = LeftMostTilesPos; x < LeftMostTilesPos + tilesPerScreen.Item1 + 2; x++)
+                for (int x = LeftMostTilesPos - 1; x < LeftMostTilesPos + tilesPerScreen.Item1 + 2; x++)
                 {
-                    for (int y = TopMostTilesPos; y < TopMostTilesPos + tilesPerScreen.Item2 + 2; y++)
+                    for (int y = TopMostTilesPos - 1; y < TopMostTilesPos + tilesPerScreen.Item2 + 2; y++)
                     {
-                        if (x >= 0 && x < ChunkCountX / Chunk.ChunkSize && y >= 0 && y < ChumkCountY / Chunk.ChunkSize)
+                        if (x >= 0 && x < ChunkCountX && y >= 0 && y < ChumkCountY)
                         {
                             var chunk = GetChunk(x, y);
                             if (chunk != null)
                             {
                                 drawbleChunk.Add(chunk);
-
-                                foreach (var entity in _entities)
-                                {
-                                    if (CollisionDetected.AABBsIntersect(chunk.GetAABB(), entity.GetBody().GetAABB()))
-                                    {
-                                        foreach (var body in chunk.GetBodies())
-                                            if (CollisionDetected.AABBsIntersect(entity.GetBody().GetAABB(), body.GetAABB()))
-                                            {
-                                                _bodies.Add(body);
-                                                break;
-                                            }
-                                    }
-                                }
-                                foreach (var entity in _dropItems)
-                                {
-                                    if (CollisionDetected.AABBsIntersect(chunk.GetAABB(), entity.GetBody().GetAABB()))
-                                    {
-                                        foreach (var body in chunk.GetBodies())
-                                            if (CollisionDetected.AABBsIntersect(entity.GetBody().GetAABB(), body.GetAABB()))
-                                            {
-                                                _bodies.Add(body);
-                                                break;
-                                            }
-                                    }
-                                }
                             }
                         }
                     }
                 }
+                
 
-                return drawbleChunk;
+                 return drawbleChunk;
             });
             drawbleChunk = chunks.Result;
-            _physicsWorld.Step(deltaTime, 20, _bodies);
+
+            Task.Run(() =>
+            {
+                try
+                {
+                    lock (lockes)
+                    {
+                        _entities.ForEach(entity =>
+                        {
+                            entity.Update(deltaTime);
+                        });
+
+                        _physicsWorld.Step(deltaTime, _entities, drawbleChunk);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Ошибка в физическом мире: " + ex.Message);
+                }
+            });
+
+            Game.SetCameraPosition(_entities[0].Position);
         }
 
         /// <summary>
@@ -226,20 +208,19 @@ namespace VoxelGame.Worlds
             {
                 if (drawbleChunk[i] != null)
                 {
-                    drawbleChunk[i].Draw(target, states);                    
+                    drawbleChunk[i].Draw(target, states);
                 }
             }
 
-            for (int i = 0; i < _bodies.Count; i++)
+            lock (lockes)
             {
-                if (_bodies[i] != null)
-                {
-                    DebugRender.AddRectangle(_bodies[i].GetPolygon());
-                }
+                _entities.ForEach(entity => { entity.Draw(target, states); });
             }
+        }
 
-            _entities.ForEach(entity => entity.Draw(target, states));
-            _dropItems.ForEach(item => item.Draw(target, states));
+        public Player? GetPlayer()
+        {
+            return _entities.OfType<Player>().FirstOrDefault();
         }
 
         /// <summary>
@@ -247,9 +228,9 @@ namespace VoxelGame.Worlds
         /// </summary>
         /// <param name="infoItem"> Предмет </param>
         /// <param name="position"> Позиция </param>
-        public void DropItem(InfoItem infoItem, Vector2f position)
+        public void DropItem(Item.Item infoItem, Vector2f position)
         {
-            _dropItems.Add(new DropItem(infoItem, _physicsWorld.CreateBody(Polygon.BoxPolygon(16, 16), 1, 0)) { Position = position });
+            _entities.Add(new DropItem(infoItem, new AABB(16, 16), this) { Position = position });
         }
 
         /// <summary>
@@ -259,8 +240,34 @@ namespace VoxelGame.Worlds
         /// <param name="position"> Позиция </param>
         public void DropItem(InfoTile tile, Vector2f position)
         {
-            var dropItem = new DropItem(ItemTileByTile.GetInfoItemByTile(tile), _physicsWorld.CreateBody(Polygon.BoxPolygon(16, 16), 1, 0)) { Position = position};
-            _dropItems.Add(dropItem);
+            if (Enum.GetNames<ItemList>().Contains(tile.Type.ToString()))
+            {
+                DropItem(Items.GetItem((ItemList)Enum.Parse(typeof(ItemList), tile.Type.ToString())), position);
+            }
+            else
+            {
+                DropItem(Items.GetItem(ItemList.None), position);
+            }
+        }
+
+        public DropItem? GetItem(DropItem dropItem)
+        {
+            return _entities.OfType<DropItem>().FirstOrDefault(item => item != null && item.Item == dropItem.Item);
+        }
+
+        public bool RemoveItem(DropItem dropItem)
+        {
+            if (_entities.Contains(dropItem))
+            {
+                var index = _entities.IndexOf(dropItem);
+
+                if (index < 0 || index >= _entities.Count)
+                    return false;
+
+                return _entities.Remove(dropItem);
+            }
+
+            return false;
         }
     }
 }

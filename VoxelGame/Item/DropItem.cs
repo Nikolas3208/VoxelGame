@@ -1,30 +1,36 @@
 ﻿using SFML.Graphics;
 using SFML.System;
 using VoxelGame.Graphics;
+using VoxelGame.Meths;
 using VoxelGame.Physics;
 using VoxelGame.Resources;
+using VoxelGame.Worlds;
 
 namespace VoxelGame.Item
 {
-    public class DropItem : Transformable, Drawable
+    public class DropItem : Entity
     {
-        private Sprite _sprite;
-        private RigidBody _body;
+        /// <summary>
+        /// Предмет
+        /// </summary>
+        public Item Item { get; private set; }
 
-        public InfoItem Item { get; private set; }
+        /// <summary>
+        /// Количество предметов
+        /// </summary>
+        public int ItemCount { get; private set; } = 1;
 
-        public new Vector2f Position
-        {
-            get => _body.Position;
-            set => _body.Position = value;
-        }
-
-        public DropItem(InfoItem item, RigidBody body)
+        /// <summary>
+        /// Конструктор
+        /// </summary>
+        /// <param name="item"></param>
+        /// <param name="aabb"></param>
+        /// <param name="world"></param>
+        public DropItem(Item item, AABB aabb, World world) : base(world, aabb)
         {
             Item = item;
-            _body = body;
-            _body.Layer = CollisionLayer.Item;
-            _body.CollidesWith = CollisionLayer.Ground;
+            Layer = CollisionLayer.Item;
+            CollidesWith = CollisionLayer.Ground;
 
             SpriteSheet ss;
 
@@ -38,27 +44,57 @@ namespace VoxelGame.Item
                     break;
             }
 
-            _sprite = ss.Sprite;
-            _sprite.TextureRect = ss.GetTextureRect(item.SpriteIndex);
-
-            _sprite.Origin = new Vector2f(ss.SubWidth, ss.SubHeight) / 2;
+            rect.Texture = ss.Texture;
+            rect.TextureRect = ss.GetTextureRect(item.SpriteIndex);
         }
 
-        public void Update(float deltaTime)
+        float animAngle = 0f;
+
+
+        /// <summary>
+        /// Обновление предмета
+        /// </summary>
+        /// <param name="deltaTime"></param>
+        public override void Update(float deltaTime)
         {
-            base.Position = Position;
+            animAngle += deltaTime * 3f;
+
+            rect.Position = new Vector2f(0, MathF.Cos(animAngle) * 4f);
+
+            var playerPosition = world.GetPlayer()?.Position ?? new Vector2f(0, 0);
+
+            if(MathHelper.DistanceSquared(Position, playerPosition) < 25000)
+            {
+                var direction = playerPosition - Position;
+                velocity += direction * 0.5f;
+            }
         }
 
-        public void Draw(RenderTarget target, RenderStates states)
+        /// <summary>
+        /// Отрисовка предмета
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="states"></param>
+        public override void Draw(RenderTarget target, RenderStates states)
         {
-            states.Transform *= Transform;
-
-            target.Draw(_sprite, states);
+            base.Draw(target, states);
         }
 
-        public RigidBody GetBody()
+        /// <summary>
+        /// Добавить предмет в стак
+        /// </summary>
+        /// <param name="item"></param>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public bool AddItem(Item item, int count)
         {
-            return _body;
+            if (item.GetType() == Item.GetType() && ItemCount + count <= item.MaxCoutnInStack)
+            {
+                ItemCount += count;
+                return true;
+            }
+
+            return false;
         }
     }
 }

@@ -30,9 +30,11 @@ namespace VoxelGame.Worlds
 
             Color color = Color.White;
 
+            color = tile?.Type == TileType.Leaves ? Color.Green : Color.White;
+
             if (tile != null && tile.Type != TileType.None)
             {
-                var texCoords = TexCoordsByTileType.GeTexCoords(tile.Type);
+                var texCoords = TexCoordsByTileType.GetTexCoords(tile.Type);
 
                 Mesh[index + 0] = new Vertex(new Vector2f(x * tile.Size.X, y * tile.Size.Y), color, new Vector2f(texCoords.Item1, texCoords.Item2));
                 Mesh[index + 1] = new Vertex(new Vector2f(x * tile.Size.X, y * tile.Size.Y + tile.Size.Y), color, new Vector2f(texCoords.Item1, 16 + texCoords.Item2));
