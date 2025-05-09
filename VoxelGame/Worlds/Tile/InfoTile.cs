@@ -7,7 +7,7 @@ public class InfoTile
     /// <summary>
     /// Минимальный размер плитки
     /// </summary>
-    public const int TileSize = 32;
+    public const int TileSize = 16;
 
     /// <summary>
     /// Идентификатор плитки
@@ -24,10 +24,14 @@ public class InfoTile
     /// </summary>
     public Vector2f Size { get; set; } = new Vector2f(TileSize, TileSize);
 
+    public Chunk Chunk { get; set; }
+
     /// <summary>
     /// Прочность плитки
     /// </summary>
     public float Strength { get; set; } = 1.0f;
+
+    public bool IsWall { get; set; } = false;
 
     /// <summary>
     /// Плитка

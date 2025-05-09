@@ -14,6 +14,7 @@
                 TileType.Leaves => (4 * 16, 3 * 16),
                 TileType.IronOre => (1 * 16, 2 * 16),
                 TileType.Board => (4 * 16, 0),
+                TileType.Chest => (11 * 16, 16),
                 _ => throw new NotImplementedException()
             };
         }

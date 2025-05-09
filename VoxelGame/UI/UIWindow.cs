@@ -1,60 +1,54 @@
 ﻿using SFML.Graphics;
+using SFML.System;
+using VoxelGame.Resources;
 
 namespace VoxelGame.UI
 {
     public class UIWindow : UIBase
     {
-        protected List<UIBase> childs;
-
-        public UIWindow()
+        protected RectangleShape titleBar;
+        protected Text titleText;
+        
+        public string Title
         {
-            childs = new List<UIBase>();
+            get => titleText.DisplayedString;
+            set => titleText.DisplayedString = value;
         }
 
-        public void AddChild(UIBase child)
-        {
-            childs.Add(child);
-            child.Perent = this;
-        }
+        public bool TitleBarIsVisible { get; set; } = true;
 
-        public UIBase? GetChildByStrId(string strId)
+        public UIWindow(Vector2f size, string title = "Window")
         {
-            return childs.Find(c => c.StrId == strId);
-        }
+            rect = new RectangleShape(size);
+            rect.Origin = new Vector2f(40, Size.Y / 2);
+            rect.FillColor = new Color(200, 200, 200);
 
-        public T GetChildByStrId<T>(string strId) where T : UIBase
-        {
-            return (T)childs.Find(c => c.StrId == strId)!;
-        }
+            titleBar = new RectangleShape(new Vector2f(size.X, 32));
+            //titleBar.Origin = titleBar.Size / 2;
+            titleBar.Position = new Vector2f(0, -size.Y) / 2;
 
-        public T GetChild<T>() where T : UIBase
-        {
-            return (T)childs.OfType<T>();
-        }
-
-        public bool RemoveChild(UIBase child)
-        {
-            if (childs.Contains(child))
-            {
-                child.Perent = null;
-                return childs.Remove(child);
-            }
-
-            return false;
+            titleText = new Text(title, AssetManager.GetFont("Arial"));
+            titleText.FillColor = Color.Black;
+            //titleText.Origin = titleBar.Size / 2;
+            titleText.Position = titleBar.Position;
         }
 
         public override void Update(float deltaTime)
         {
-            foreach (var child in childs)
-                child.Update(deltaTime);
+            base.Update(deltaTime);
         }
 
         public override void Draw(RenderTarget target, RenderStates states)
         {
+            base.Draw(target, states);
+
             states.Transform *= Transform;
 
-            foreach (var child in childs)
-                child.Draw(target, states);
+            if (TitleBarIsVisible)
+            {
+                target.Draw(titleBar, states);
+                target.Draw(titleText, states);
+            }
         }
     }
 }

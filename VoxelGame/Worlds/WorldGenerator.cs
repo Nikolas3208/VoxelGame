@@ -78,7 +78,12 @@ public static class WorldGenerator
                 else
                 {
                     // Пустое место — пещера
-                    chunk.SetTile(cX, cY, null);
+                    var tile = chunk.GetTile(cX, cY);
+
+                    if (tile != null)
+                        chunk.SetTile(cX, cY, tile.Type, isWall: true);
+                    else
+                        chunk.SetTile(cX, cY, TileType.Stone, isWall: true);
                 }
             }
         }

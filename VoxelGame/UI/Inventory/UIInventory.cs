@@ -5,16 +5,28 @@ namespace VoxelGame.UI.Inventory
 {
     public class UIInventory : UIWindow
     {
-        private UIInventoryCell _selectedCell;
+        private UIInventoryCell? _selectedCell;
 
-        public UIInventory()
+        public bool IsFullInventoryVisible { get; private set; } = false;
+
+        public UIInventory(Vector2f size) : base(size, "Player Inventory")
         {
+            TitleBarIsVisible = false;
+
             for (int i = 0; i < 10; i++)
             {
                 childs.Add(new UIInventoryCell() { Position = new Vector2f(i * 80, 0), Perent = this });
             }
 
             SetSelectedCell((UIInventoryCell)childs[0]);
+
+            for (int x = 0; x < 10; x++) 
+            {
+                for (int y = 1; y < 6; y++)
+                {
+                    childs.Add(new UIInventoryCell() { Position = new Vector2f(x * 80, -y * 80), Perent = this, IsVisible = false, IsUpdate = false });
+                }
+            }
         }
 
         public void SetSelectedCell(int cellIndex)
@@ -61,7 +73,7 @@ namespace VoxelGame.UI.Inventory
 
                 itemStack.ItemCount = count;
 
-                cell.SetItemStack(itemStack);
+                cell.ItemStack = itemStack;
             }
 
             return true;
@@ -72,7 +84,7 @@ namespace VoxelGame.UI.Inventory
             return _selectedCell.GetItem();
         }
 
-        public Item.Item CraftItem(ItemList itemList)
+        public Item.Item? CraftItem(ItemList itemList)
         {
             var item = Items.GetItem(itemList);
             if (item == null)
@@ -104,26 +116,32 @@ namespace VoxelGame.UI.Inventory
                     return null;
             }
 
-            for (int i = 0; i < craft.Items.Length; i++)
+
+
+            if (AddItem(item, craft.OutCount))
             {
-                var itemCraft = craft.Items[i];
-                foreach (var cell in childs.Select(c => c as UIInventoryCell))
+                for (int i = 0; i < craft.Items.Length; i++)
                 {
-                    var cellItem = cell!.GetItem();
-
-                    if (cellItem == null)
-                        continue;
-
-                    if (cellItem!.ItemList == itemCraft.Item && cell.ItemStack!.ItemCount >= itemCraft.Count)
+                    var itemCraft = craft.Items[i];
+                    foreach (var cell in childs.Select(c => c as UIInventoryCell))
                     {
-                        cell.ItemStack.ItemCount -= itemCraft.Count;
-                        break;
+                        var cellItem = cell!.GetItem();
+
+                        if (cellItem == null)
+                            continue;
+
+                        if (cellItem!.ItemList == itemCraft.Item && cell.ItemStack!.ItemCount >= itemCraft.Count)
+                        {
+                            cell.ItemStack.ItemCount -= itemCraft.Count;
+                            break;
+                        }
                     }
                 }
+
+                return item;
             }
 
-            AddItem(item, craft.OutCount);
-            return item;
+            return null;
         }
 
         private UIInventoryCell? GetSuitableCell(UIItemStack itemStack, int count = 1)
@@ -148,6 +166,50 @@ namespace VoxelGame.UI.Inventory
         public UIInventoryCell? GetSelectedCell()
         {
             return childs.Select(c => c as UIInventoryCell).ToList().Find(cell => cell!.IsSelected);
+        }
+
+        public void ShowInventory()
+        {
+            rect.Size = new Vector2f(Size.X, 550);
+            rect.Origin = new Vector2f(40, 520);
+            IsFullInventoryVisible = true;
+
+            for (int x = 0; x < 10; x++)
+            {
+                for (int y = 0; y < 6; y++)
+                {
+                    int index = x + y * 10;
+
+                    var child = childs[index];
+                    child.IsVisible = true;
+                    child.IsUpdate = true;
+                }
+            }
+        }
+
+        public void HideInventory()
+        {
+            IsFullInventoryVisible = false;
+            rect.Size = new Vector2f(800, 100);
+            rect.Origin = new Vector2f(40, 50);
+
+            for (int x = 0; x < 10; x++)
+            {
+                for (int y = 1; y < 6; y++)
+                {
+                    int index = x + y * 10;
+
+                    var child = childs[index];
+
+                    child.IsVisible = false;
+                    child.IsUpdate = false;
+                }
+            }
+        }
+
+        public override void Update(float deltaTime)
+        {
+            base.Update(deltaTime);
         }
     }
 }

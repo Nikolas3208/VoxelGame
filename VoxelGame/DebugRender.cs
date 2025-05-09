@@ -1,6 +1,7 @@
 ﻿using SFML.Graphics;
 using SFML.System;
 using VoxelGame.Physics;
+using VoxelGame.Resources;
 
 namespace VoxelGame
 {
@@ -36,6 +37,11 @@ namespace VoxelGame
             var obj = new Text(mess, font);
             obj.Position = pos;
             objects.Add(obj);
+        }
+
+        public static void AddText(Vector2f possition, string mess)
+        {
+            AddText(AssetManager.GetFont("Arial"), possition, mess);
         }
 
         public static void AddImage(Texture tx, Vector2f pos)

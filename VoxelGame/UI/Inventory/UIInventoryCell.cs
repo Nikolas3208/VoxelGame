@@ -6,58 +6,52 @@ namespace VoxelGame.UI.Inventory
 {
     public class UIInventoryCell : UIBase
     {
-        private Sprite _sprite;
+        private UIItemStack _itemStack;
+        public UIItemStack? ItemStack
+        {
+            get => _itemStack;
+            set
+            {
+                if(_itemStack != null && value != null && _itemStack.Item.ItemList == value.Item.ItemList)
+                {
+                    _itemStack.ItemCount += value.ItemCount;
+                    return;
+                }
 
-        public UIItemStack? ItemStack { get; set; }
+                _itemStack = value;
+
+                if(_itemStack != null)
+                {
+                    _itemStack.Perent = this;
+                    _itemStack.Position = new Vector2f();
+                    AddChild(_itemStack);
+                }
+            }
+        }
 
         public bool IsSelected { get; set; } = false;
 
         public UIInventoryCell()
         {
-            _sprite = new Sprite(AssetManager.GetTexture("ui/inventory_cell"));
-            _sprite.Scale = new Vector2f(0.1f, 0.1f);
-            _sprite.Origin = new Vector2f(80, 80);
+            rect = new RectangleShape(new Vector2f(80, 80));
+            rect.Texture = AssetManager.GetTexture("ui/inventory_cell");
+
+            rect.Origin = Size / 2;
+
+            CanDrop = true;
         }
 
-        public override void Update(float deltaTime)
+        public override void OnDrop(UIBase drop)
         {
-            if (ItemStack != null)
+            base.OnDrop(drop);
+
+            if (drop == null)
+                return;
+
+            if (drop is UIItemStack)
             {
-                ItemStack.Update(deltaTime);
+                ItemStack = (UIItemStack)drop;
             }
-
-            if(IsSelected)
-            {
-                _sprite.Scale = new Vector2f(0.11f, 0.11f);
-                _sprite.Origin = new Vector2f(88, 88);
-            }
-            else
-            {
-                _sprite.Scale = new Vector2f(0.1f, 0.1f);
-            }
-        }
-
-        public override void Draw(RenderTarget target, RenderStates states)
-        {
-            states.Transform *= Transform;
-
-            target.Draw(_sprite, states);
-
-            if (ItemStack != null)
-            {
-                ItemStack.Draw(target, states);
-            }
-        }
-
-        public void SetItemStack(UIItemStack itemStack)
-        {
-            itemStack.Perent = this;
-            ItemStack = itemStack;
-        }
-
-        public UIItemStack GetItemStack()
-        {
-            return ItemStack!;
         }
 
         public Item.Item? GetItem()

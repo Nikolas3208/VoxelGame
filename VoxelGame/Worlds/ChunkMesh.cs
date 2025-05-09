@@ -21,16 +21,15 @@ namespace VoxelGame.Worlds
             Tiles = new InfoTile[Chunk.ChunkSize * Chunk.ChunkSize];
         }
 
-        public void SetTileToMesh(int x, int y, InfoTile tile)
+        public void SetTileToMesh(int x, int y, InfoTile tile, Color color)
         {
             if (x < 0 || y < 0 || x >= Chunk.ChunkSize || y >= Chunk.ChunkSize) 
                 return;
 
             int index = x * Chunk.ChunkSize * OneTileVerticesCount + y * OneTileVerticesCount;
 
-            Color color = Color.White;
-
-            color = tile?.Type == TileType.Leaves ? Color.Green : Color.White;
+            color = tile?.Type == TileType.Leaves ? Color.Green : color;
+            color = tile?.Type == TileType.Wood ? Color.White: color;
 
             if (tile != null && tile.Type != TileType.None)
             {
@@ -53,6 +52,31 @@ namespace VoxelGame.Worlds
                 Mesh[index + 4] = new Vertex();
                 Mesh[index + 5] = new Vertex();
             }
+        }
+
+        public void UpdateTileColor(Color color, int x, int y)
+        {
+            if (x < 0 || y < 0 || x >= Chunk.ChunkSize || y >= Chunk.ChunkSize)
+                return;
+
+            int index = x * Chunk.ChunkSize * OneTileVerticesCount + y * OneTileVerticesCount;
+
+            Mesh[index + 0].Color = color;
+            Mesh[index + 1].Color = color;
+            Mesh[index + 2].Color = color;
+            Mesh[index + 3].Color = color;
+            Mesh[index + 4].Color = color;
+            Mesh[index + 5].Color = color;
+        }
+
+        public Color GetTileColor(int x, int y)
+        {
+            int index = x * Chunk.ChunkSize * OneTileVerticesCount + y * OneTileVerticesCount;
+
+            if (index >= Mesh.Length)
+                return Color.Black;
+
+            return Mesh[index + 0].Color;
         }
 
         public Vertex[] GetChunkMesh()

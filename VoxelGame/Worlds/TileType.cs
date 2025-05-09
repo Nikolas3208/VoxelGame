@@ -11,6 +11,7 @@
         IronOre = 5,
         Board = 6,
         Door = 7,
-        Workbench = 8
+        Workbench = 8,
+        Chest = 9
     }
 }

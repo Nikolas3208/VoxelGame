@@ -73,7 +73,7 @@ namespace VoxelGame.Worlds
             _entities = new List<Entity>();
             _dropItems = new List<DropItem>();
 
-            _entities.Add(new Player(this, new AABB(32, 64)));
+            _entities.Add(new Player(this, new AABB(16, 32)));
         }
 
         /// <summary>
@@ -97,6 +97,8 @@ namespace VoxelGame.Worlds
 
             chunk.GenerateColliders();
             chunk.IsComplate = true;
+            chunk.X = x;
+            chunk.Y = y;
             _chanks[index] = chunk;
         }
 
@@ -143,34 +145,20 @@ namespace VoxelGame.Worlds
         /// <param name="deltaTime"> Время кадра </param>
         public void Update(float deltaTime)
         {
-            Task<List<Chunk>> chunks = Task.Run(() =>
-            {
-                var drawbleChunk = new List<Chunk>();
-                var tilePos = (Game.GetCameraPosition().X / Chunk.ChunkSize / InfoTile.TileSize, Game.GetCameraPosition().Y / Chunk.ChunkSize / InfoTile.TileSize);
-                var tilesPerScreen = (MathF.Ceiling(Game.GetWindowSize().X / (Chunk.ChunkSize * InfoTile.TileSize)), MathF.Ceiling(Game.GetWindowSize().Y / (Chunk.ChunkSize * InfoTile.TileSize)));
-                var LeftMostTilesPos = (int)(tilePos.Item1 - tilesPerScreen.Item1);
-                var TopMostTilesPos = (int)(tilePos.Item2 - tilesPerScreen.Item2);
+            var chunks = Task.Run(() => ChunkUpdate(deltaTime));
 
-
-                for (int x = LeftMostTilesPos - 1; x < LeftMostTilesPos + tilesPerScreen.Item1 + 2; x++)
-                {
-                    for (int y = TopMostTilesPos - 1; y < TopMostTilesPos + tilesPerScreen.Item2 + 2; y++)
-                    {
-                        if (x >= 0 && x < ChunkCountX && y >= 0 && y < ChumkCountY)
-                        {
-                            var chunk = GetChunk(x, y);
-                            if (chunk != null)
-                            {
-                                drawbleChunk.Add(chunk);
-                            }
-                        }
-                    }
-                }
-                
-
-                 return drawbleChunk;
-            });
             drawbleChunk = chunks.Result;
+
+            lock (lockes)
+            {
+                for (int i = 0; i < _entities.Count; i++)
+                {
+                    var entity = _entities[i];
+
+                    if (entity != null)
+                        entity.Update(deltaTime);
+                }
+            }
 
             Task.Run(() =>
             {
@@ -178,11 +166,6 @@ namespace VoxelGame.Worlds
                 {
                     lock (lockes)
                     {
-                        _entities.ForEach(entity =>
-                        {
-                            entity.Update(deltaTime);
-                        });
-
                         _physicsWorld.Step(deltaTime, _entities, drawbleChunk);
                     }
                 }
@@ -200,6 +183,36 @@ namespace VoxelGame.Worlds
         /// </summary>
         /// <param name="target"></param>
         /// <param name="states"></param>
+
+        public Task<List<Chunk>> ChunkUpdate(float deltaTime)
+        {
+            var drawbleChunk = new List<Chunk>();
+            var tilePos = (Game.GetCameraPosition().X / Chunk.ChunkSize / InfoTile.TileSize, Game.GetCameraPosition().Y / Chunk.ChunkSize / InfoTile.TileSize);
+            var tilesPerScreen = (MathF.Ceiling(Game.GetWindowSize().X / (Chunk.ChunkSize * InfoTile.TileSize)), MathF.Ceiling(Game.GetWindowSize().Y / (Chunk.ChunkSize * InfoTile.TileSize)));
+            var LeftMostTilesPos = (int)(tilePos.Item1 - tilesPerScreen.Item1);
+            var TopMostTilesPos = (int)(tilePos.Item2 - tilesPerScreen.Item2);
+
+
+            for (int x = LeftMostTilesPos - 1; x < LeftMostTilesPos + tilesPerScreen.Item1 + 3; x++)
+            {
+                for (int y = TopMostTilesPos - 1; y < TopMostTilesPos + tilesPerScreen.Item2 + 2; y++)
+                {
+                    if (x >= 0 && x < ChunkCountX && y >= 0 && y < ChumkCountY)
+                    {
+                        var chunk = GetChunk(x, y);
+                        if (chunk != null)
+                        {
+                            Light.LightingChunk(chunk, new List<Vector2f>());
+                            chunk.Update(deltaTime);
+                            drawbleChunk.Add(chunk);
+                        }
+                    }
+                }
+            }
+
+            return Task.FromResult(drawbleChunk);
+        }
+
         public void Draw(RenderTarget target, RenderStates states)
         {
             states.Transform *= Transform;
@@ -208,6 +221,7 @@ namespace VoxelGame.Worlds
             {
                 if (drawbleChunk[i] != null)
                 {
+                    
                     drawbleChunk[i].Draw(target, states);
                 }
             }

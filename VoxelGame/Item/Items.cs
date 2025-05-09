@@ -12,13 +12,17 @@ namespace VoxelGame.Item
         StoneAxe,
         StoneShovel,
         Ground,
+        GroundWall,
         Grass,
         Stone,
+        StoneWall,
         IronOre,
         Wood,
         Board,
+        BoardWall,
         Stick,
-        Workbench
+        Workbench,
+        Chest
     }
 
     public static class Items
@@ -40,8 +44,10 @@ namespace VoxelGame.Item
                 .SetItem(items),
 
                 ItemList.Ground => GetItemTileByTile(TileType.Ground),
+                ItemList.GroundWall => GetItemTileByTile(TileType.Ground, true).SetCraft(1, CraftTool.None, new CraftElement(ItemList.Ground, 1)),
                 ItemList.Grass => GetItemTileByTile(TileType.Ground),
                 ItemList.Stone => GetItemTileByTile(TileType.Stone),
+                ItemList.StoneWall => GetItemTileByTile(TileType.Stone, true).SetCraft(1, CraftTool.None, new CraftElement(ItemList.Stone, 1)),
                 ItemList.IronOre => GetItemTileByTile(TileType.IronOre)
                 .SetItem(ItemList.IronOre),
 
@@ -49,20 +55,25 @@ namespace VoxelGame.Item
                 .SetCraft(4, craftElements: new CraftElement(ItemList.Wood, 1))
                 .SetItem(items),
 
+                ItemList.BoardWall => GetItemTileByTile(TileType.Board, true).SetCraft(1, CraftTool.None, new CraftElement(ItemList.Board, 1)),
+
                 ItemList.Stick => new Item(ItemType.Material, "Stick", "Wood Stick", 1, 1, 3 * 16 + 5)
                 .SetCraft(4, craftElements: new CraftElement(ItemList.Board, 1))
                 .SetItem(items),
 
                 ItemList.Wood => GetItemTileByTile(TileType.Wood)
                 .SetItem(ItemList.Wood),
+
+                ItemList.Chest => new ItemTile(TileType.Chest, GetItemTextureIndexByTileType(TileType.Chest)),
+
                 _ => new Item(ItemType.Tile, "None", "None", 1, 1, 0)
             };
         }
             
 
-        public static ItemTile GetItemTileByTile(TileType type)
+        public static ItemTile GetItemTileByTile(TileType type, bool isWall = false)
         {
-            return new ItemTile(type, GetItemTextureIndexByTileType(type), 64);
+            return new ItemTile(type, GetItemTextureIndexByTileType(type), 64, isWall);
         }
 
         public static int GetItemTextureIndexByTileType(TileType type)
@@ -76,6 +87,7 @@ namespace VoxelGame.Item
                 TileType.Leaves => 53,
                 TileType.IronOre => 33,
                 TileType.Board => 4,
+                TileType.Chest => 27,
                 _ => -1
             };
         }
