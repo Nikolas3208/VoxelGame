@@ -76,8 +76,34 @@ namespace VoxelGame.Worlds
         public bool SetTile(int x, int y, InfoTile? tile, bool isPlayer = false, bool isWall = false)
         {
             // Проверяем на валидность координаты
-            if (x < 0 || x >= ChunkSize || y < 0 || y >= ChunkSize)
-                return false;
+            //if (IsComplate)
+            {
+                if (y < 0)
+                {
+                    var upChunk = _world.GetChunk(X, Y - 1);
+                    return upChunk != null ? upChunk.SetTile(x, ChunkSize + y, tile, isPlayer, isWall) : false;
+                }
+                else if (y >= ChunkSize)
+                {
+                    var downChunk = _world.GetChunk(X, Y + 1);
+                    return downChunk != null ? downChunk.SetTile(x, y - ChunkSize, tile, isPlayer, isWall) : false;
+                }
+                else if (x < 0)
+                {
+                    var leftChunk = _world.GetChunk(X - 1, Y);
+                    return leftChunk != null ? leftChunk.SetTile(ChunkSize + x, y, tile, isPlayer, isWall) : false;
+                }
+                else if (x >= ChunkSize)
+                {
+                    var rightChunk = _world.GetChunk(X + 1, Y);
+                    return rightChunk != null ? rightChunk.SetTile(x - ChunkSize, y, tile, isPlayer, isWall) : false;
+                }
+            }
+            //else
+            {
+                //if(x < 0 || y < 0 || x >= ChunkSize || y >= ChunkSize)
+                   // return false;
+            }
 
             // Находим индекс плитки в массиве
             int index = x * ChunkSize + y;
@@ -88,6 +114,9 @@ namespace VoxelGame.Worlds
                 tile!.Id = index;
                 tile!.IsWall = isWall;
                 tile!.Chunk = this;
+
+                if (isWall)
+                    tile.IsCollide = false;
             }
             else if (_tiles[index] != null && IsComplate)
             {
@@ -101,16 +130,10 @@ namespace VoxelGame.Worlds
                 _tiles[index] = tile!;
 
                 // Устанавливаем плитку в сетку чанка
-                if (isWall)
-                {
-                    _chunkMesh.SetTileToMesh(x, y, tile!, Color.Black);
-                }
-                else
-                {
-                    _chunkMesh.SetTileToMesh(x, y, tile!, Color.Black);
-                }
+                _chunkMesh.SetTileToMesh(x, y, tile!, Color.Black);
+
             }
-            else if(isPlayer && IsComplate)
+            else if (isPlayer && IsComplate)
             {
                 var upTile = GetTile(x, y + 1);
                 var downTile = GetTile(x, y - 1);
@@ -123,14 +146,8 @@ namespace VoxelGame.Worlds
                     _tiles[index] = tile!;
 
                     // Устанавливаем плитку в сетку чанка
-                    if (isWall)
-                    {
-                        _chunkMesh.SetTileToMesh(x, y, tile!, Color.Black);
-                    }
-                    else
-                    {
-                        _chunkMesh.SetTileToMesh(x, y, tile!, Color.Black);
-                    }
+                    _chunkMesh.SetTileToMesh(x, y, tile!, Color.Black);
+
                 }
                 else
                     return false;
@@ -180,17 +197,18 @@ namespace VoxelGame.Worlds
         /// <param name="position"> Позиция </param>
         /// <param name="tile"> Плитка </param>
         /// <returns> True если плитка установленна </returns>
-        public bool SetTileByWorldPosition(Vector2f position, TileType type, bool isWall = false)
+        public bool SetTileByWorldPosition(Vector2f position, TileType type, bool isPlayer = false, bool isWall = false)
         {
             int x = (int)((position.X - Position.X) / InfoTile.TileSize);
             int y = (int)((position.Y - Position.Y) / InfoTile.TileSize);
 
             if(type == TileType.Chest)
             {
+                SetTile(x, y, type, isPlayer: isPlayer, isWall: true);
                 return AddTileEntity(new ChestEntity() { Chunk = this, Position = new Vector2f(x, y) * InfoTile.TileSize, Id = x * ChunkSize + y });
             }
 
-            return SetTile(x, y, type, isWall: isWall);
+            return SetTile(x, y, type, isPlayer: isPlayer, isWall: isWall);
         }
 
         /// <summary>
@@ -237,14 +255,19 @@ namespace VoxelGame.Worlds
             return GetTile(x, y);
         }
 
-        public bool BreakingTail(int x, int y, float damage)
+        public bool BreakingTail(int x, int y, float damage, ItemType tool)
         {
             var tile = GetTile(x, y);
 
             if (tile != null)
             {
-                if(tile.BreakingTail(damage) == null)
+                if(tile.BreakingTail(damage, tool) == null)
                 {
+                    if(tile.IsTree)
+                    {
+                        return ChoppingTree(tile, x, y);
+                    }
+
                     SetTile(x, y, null);
 
                     return true;
@@ -254,21 +277,52 @@ namespace VoxelGame.Worlds
             return false;
         }
 
-        public bool BreakingTailByWorldPosition(Vector2f position, float damage)
+        public bool BreakingTailByWorldPosition(Vector2f position, float damage, ItemType tool)
         {
-            var tile = GetTileByWorldPosition(position);
+            int x = (int)((position.X - Position.X) / InfoTile.TileSize);
+            int y = (int)((position.Y - Position.Y) / InfoTile.TileSize);
 
-            if (tile != null)
+            return BreakingTail(x, y, damage, tool);
+        }
+
+        public bool ChoppingTree(InfoTile treeTile, int x, int baseY)
+        {
+            for (int y = 0; treeTile != null && treeTile.IsTree; y--)
             {
-                if (tile.BreakingTail(damage) == null)
-                {
-                    SetTileByWorldPosition(position, null);
+                if (y != 0)
+                    treeTile = GetTile(x, baseY + y)!;
 
-                    return true;
+                if (treeTile != null && treeTile.IsTree)
+                    SetTile(x, baseY + y, null);
+                else
+                {
+                    baseY += y - 2;
+                }
+
+            }
+
+            if (treeTile != null && treeTile.Type == TileType.Leaves)
+            {
+                // Ставим листву
+                int top = baseY;
+                for (int dx = -2; dx <= 2; dx++)
+                {
+                    for (int dy = -2; dy <= 2; dy++)
+                    {
+                        int leafX = x + dx;
+                        int leafY = top + dy;
+
+                        float dist = MathF.Abs(dx) + MathF.Abs(dy); // крест
+                        if (dist <= 3)
+                        {
+                            SetTile(leafX, leafY, null);
+                        }
+                    }
                 }
             }
 
-            return false;
+
+            return true;
         }
 
         public bool AddTileEntity(TileEntity tileEntity)
@@ -319,28 +373,28 @@ namespace VoxelGame.Worlds
             {
                 if(GetTile(x, y) != null)
                 {
-                    return GetTile(x, y)!.Chunk.GetTileColor(x, ChunkSize + y);
+                    return GetTile(x, y)!.Chunk!.GetTileColor(x, ChunkSize + y);
                 }
             }
             else if(y >= ChunkSize)
             {
                 if (GetTile(x, y) != null)
                 {
-                    return GetTile(x, y)!.Chunk.GetTileColor(x, y - ChunkSize);
+                    return GetTile(x, y)!.Chunk!.GetTileColor(x, y - ChunkSize);
                 }
             }
             else if(x < 0)
             {
                 if (GetTile(x, y) != null)
                 {
-                    return GetTile(x, y)!.Chunk.GetTileColor(ChunkSize + x, y);
+                    return GetTile(x, y)!.Chunk!.GetTileColor(ChunkSize + x, y);
                 }
             }
             else if(x >= ChunkSize)
             {
                 if (GetTile(x, y) != null)
                 {
-                    return GetTile(x, y)!.Chunk.GetTileColor(x - ChunkSize, y);
+                    return GetTile(x, y)!.Chunk!.GetTileColor(x - ChunkSize, y);
                 }
             }
 
@@ -368,15 +422,16 @@ namespace VoxelGame.Worlds
                     var leftTile = GetTile(x - 1, y);
                     var rightTile = GetTile(x + 1, y);
 
-                    upTile = upTile?.Type == TileType.Wood ? null : upTile;
-                    downTile = downTile?.Type == TileType.Wood ? null : downTile;
-                    leftTile = leftTile?.Type == TileType.Wood ? null : leftTile;
-                    rightTile = rightTile?.Type == TileType.Wood ? null : rightTile;
 
-                    if (tile == null || tile.Type == TileType.Wood || tile.Type == TileType.Leaves || tile.IsWall)
+                    upTile = upTile != null && upTile!.IsTree ? null : upTile;
+                    downTile = downTile != null && downTile!.IsTree ? null : downTile;
+                    leftTile = leftTile != null && leftTile!.IsTree ? null : leftTile;
+                    rightTile = rightTile != null && rightTile!.IsTree ? null : rightTile;
+
+                    if (tile == null || !tile.IsCollide)
                         continue;
 
-                    if ((upTile == null || upTile.IsWall) || (downTile == null || downTile.IsWall) || (leftTile == null || leftTile.IsWall) || (rightTile == null || rightTile.IsWall))
+                    if ((upTile == null || !upTile.IsCollide) || (downTile == null || !downTile.IsCollide) || (leftTile == null || !leftTile.IsCollide) || (rightTile == null || !rightTile.IsCollide))
                     {
                         _colliders.Add(new AABB(new Vector2f(x, y) * InfoTile.TileSize + Position, new Vector2f(x, y) * InfoTile.TileSize + new Vector2f(InfoTile.TileSize, InfoTile.TileSize) + Position));
                     }

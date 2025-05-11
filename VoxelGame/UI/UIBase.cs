@@ -1,6 +1,7 @@
 ﻿using SFML.Graphics;
 using SFML.System;
 using SFML.Window;
+using VoxelGame.UI.Inventory;
 
 namespace VoxelGame.UI
 {
@@ -8,7 +9,7 @@ namespace VoxelGame.UI
     {
         protected RectangleShape rect;
 
-        protected List<UIBase> childs;
+        public List<UIBase> Childs;
 
         public string StrId { get; private set; } = string.Empty;
         public string Name { get; set; } = nameof(UIBase);
@@ -46,7 +47,7 @@ namespace VoxelGame.UI
         protected UIBase()
         {
             rect = new RectangleShape();
-            childs = new List<UIBase>();
+            Childs = new List<UIBase>();
 
             StrId = Guid.NewGuid().ToString();
         }
@@ -87,9 +88,9 @@ namespace VoxelGame.UI
 
         public virtual bool AddChild(UIBase child)
         {
-            if(!childs.Contains(child))
+            if(!Childs.Contains(child))
             {
-                childs.Add(child);
+                Childs.Add(child);
 
                 return true;
             }
@@ -99,19 +100,19 @@ namespace VoxelGame.UI
 
         public virtual UIBase? GetChild(string strId)
         {
-            return childs.Find(c => c.StrId == strId);
+            return Childs.Find(c => c.StrId == strId);
         }
 
         public virtual bool RemoveChild(UIBase child)
         {
-            return childs.Remove(child);
+            return Childs.Remove(child);
         }
 
         public FloatRect GetFloatRect() => new FloatRect(GetGlobalPosition() - rect.Origin + rect.Position, Size);
 
         public virtual void Update(float deltaTime)
         {
-            foreach (var c in childs)
+            foreach (var c in Childs)
                 c.Update(deltaTime);
         }
 
@@ -136,8 +137,8 @@ namespace VoxelGame.UI
                     UIManager.Drop = this;
                 }
 
-                for(int i = 0; i < childs.Count; i++)
-                    childs[i]?.UpdateOver(deltaTime);
+                for(int i = 0; i < Childs.Count; i++)
+                    Childs[i]?.UpdateOver(deltaTime);
             }
         }
 
@@ -150,7 +151,7 @@ namespace VoxelGame.UI
 
             target.Draw(rect, states);
 
-            foreach (var child in childs)
+            foreach (var child in Childs)
             {
                 child.Draw(target, states);
             }

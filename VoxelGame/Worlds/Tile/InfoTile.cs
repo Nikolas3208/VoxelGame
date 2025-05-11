@@ -1,11 +1,12 @@
 using SFML.System;
+using VoxelGame.Item;
 
 namespace VoxelGame.Worlds.Tile;
 
 public class InfoTile
 {
     /// <summary>
-    /// Минимальный размер плитки
+    /// Размер плитки
     /// </summary>
     public const int TileSize = 16;
 
@@ -17,20 +18,38 @@ public class InfoTile
     /// <summary>
     /// Тип плитки
     /// </summary>
-    public TileType Type { get; set; }
+    public TileType Type { get; set; } = TileType.Ground;
+
+    public ItemType SpecificTool { get; set; } = ItemType.None;
 
     /// <summary>
     /// Размер плитки
     /// </summary>
     public Vector2f Size { get; set; } = new Vector2f(TileSize, TileSize);
 
-    public Chunk Chunk { get; set; }
+    /// <summary>
+    /// Чанк родитель
+    /// </summary>
+    public Chunk? Chunk { get; set; }
 
     /// <summary>
     /// Прочность плитки
     /// </summary>
     public float Strength { get; set; } = 1.0f;
 
+    /// <summary>
+    /// С плиткой можно столкнуться?
+    /// </summary>
+    public bool IsCollide { get; set; } = true;
+
+    /// <summary>
+    /// Это дерево?
+    /// </summary>
+    public bool IsTree { get; set; } = false;
+
+    /// <summary>
+    /// Это стенка?
+    /// </summary>
     public bool IsWall { get; set; } = false;
 
     /// <summary>
@@ -52,14 +71,33 @@ public class InfoTile
         Size = size;
     }
 
-    public InfoTile(TileType type, float strength) : this(type)
+    /// <summary>
+    /// Плитка
+    /// </summary>
+    /// <param name="type"> Тип </param>
+    /// <param name="strength"> Прочность </param>
+    public InfoTile(TileType type, float strength, ItemType specificTool = ItemType.None) : this(type)
     {
         Strength = strength;
+        SpecificTool = specificTool;
     }
 
-    public InfoTile BreakingTail(float damage)
+    /// <summary>
+    /// Ломаем плитку (наносим урон)
+    /// </summary>
+    /// <param name="damage"> Урон (сила)  </param>
+    /// <returns> Плитка, если прочтность 0 тогда null </returns>
+    public InfoTile? BreakingTail(float damage, ItemType tool)
     {
-        Strength -= damage;
+        if (tool == SpecificTool)
+        {
+            Strength -= damage;
+        }
+        else
+        {
+            Strength -= damage * 0.5f;
+        }
+
         if (Strength <= 0)
         {
             return null;

@@ -1,4 +1,6 @@
-﻿namespace VoxelGame.Item
+﻿using System.Security.Cryptography.X509Certificates;
+
+namespace VoxelGame.Item
 {
     public enum ItemType
     {
@@ -6,18 +8,33 @@
         Weapon,
         Armor,
         Tile,
-        Tool,
+        Axe,
+        Pickaxe,
+        Shovel,
         Material
     }
     public class Item
     {
-        private Craft? _craft;
+        /// <summary>
+        /// Рецепт этого предмета 
+        /// </summary>
+        private Craft[] _crafts;
+
+        public Craft? Craft { get; private set; }
+
+        /// <summary>
+        /// Действие предмета
+        /// </summary>
+        protected Action<Item>? action;
 
         /// <summary>
         /// Тип предмета
         /// </summary>
         public ItemType Type { get; set; } = ItemType.None;
 
+        /// <summary>
+        /// Что это за предмет
+        /// </summary>
         public ItemList ItemList {  get; set; }
 
         /// <summary>
@@ -68,18 +85,20 @@
             Damage = infoItem.Damage;
             MaxCoutnInStack = infoItem.MaxCoutnInStack;
             SpriteIndex = infoItem.SpriteIndex;
+            ItemList = infoItem.ItemList;
+            _crafts = infoItem._crafts;
         }
 
         /// <summary>
         /// Конструктор предмета
         /// </summary>
-        /// <param name="type"></param>
-        /// <param name="name"></param>
-        /// <param name="description"></param>
-        /// <param name="strength"></param>
-        /// <param name="damage"></param>
-        /// <param name="spriteIndex"></param>
-        /// <param name="maxCountInStack"></param>
+        /// <param name="type"> Тип </param>
+        /// <param name="name"> Имя </param>
+        /// <param name="description"> Описание </param>
+        /// <param name="strength"> Прочность </param>
+        /// <param name="damage"> Урон </param>
+        /// <param name="spriteIndex"> Идентификатор спрайта на листе </param>
+        /// <param name="maxCountInStack"> Максимальное количество в стаке </param>
         public Item(ItemType type, string name, string description, float strength, float damage, int spriteIndex, int maxCountInStack = 64)
         {
             Type = type;
@@ -94,10 +113,10 @@
         /// <summary>
         /// Конструктор предмета
         /// </summary>
-        /// <param name="type"></param>
-        /// <param name="name"></param>
-        /// <param name="spriteIndex"></param>
-        /// <param name="maxCountInStack"></param>
+        /// <param name="type"> Тип </param>
+        /// <param name="name"> Имя </param>
+        /// <param name="spriteIndex"> Идентефикатор спрайта на листе </param>
+        /// <param name="maxCountInStack"> Максимальное количество в стаке </param>
         public Item(ItemType type, string name, int spriteIndex, int maxCountInStack = 64)
         {
             Type = type;
@@ -106,25 +125,52 @@
             MaxCoutnInStack = maxCountInStack;
         }
 
-        public Item SetCraft(Craft craft)
+        /// <summary>
+        /// Установить действие
+        /// </summary>
+        /// <param name="action"> Действие </param>
+        public void SetAction(Action<Item> action)
         {
-            _craft = craft;
+            this.action = action;
+        }
+
+        /// <summary>
+        /// Получить действие
+        /// </summary>
+        /// <returns></returns>
+        public Action<Item>? GetAction()
+        {
+            return action;
+        }
+
+        /// <summary>
+        /// Установить рецепт
+        /// </summary>
+        /// <param name="craft"> Рецепт </param>
+        /// <returns></returns>
+        public Item SetCrafts(params Craft[] craft)
+        {
+            _crafts = craft;
 
             return this;
         }
 
-        public Item SetCraft(int outCount, CraftTool tool = CraftTool.None, params CraftElement[] craftElements)
+        /// <summary>
+        /// Получить крафт (рецепт)
+        /// </summary>
+        /// <returns></returns>
+        public Craft[]? GetCrafts()
         {
-            _craft = new Craft(outCount, tool, craftElements);
-
-            return this;
+            return _crafts;
         }
 
-        public Craft? GetCraft()
-        {
-            return _craft;
-        }
+        public void SetCraft(Craft craft) => Craft = craft;
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="itemList"></param>
+        /// <returns></returns>
         public Item SetItem(ItemList itemList)
         {
             ItemList = itemList;
@@ -132,9 +178,12 @@
             return this;
         }
 
-        public virtual void Use()
+        /// <summary>
+        /// При использовании предмета
+        /// </summary>
+        public void Use()
         {
-
+            action?.Invoke(this);
         }
     }
 }

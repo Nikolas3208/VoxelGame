@@ -1,22 +1,21 @@
 ﻿namespace VoxelGame.Item
 {
-    public enum ToolType
-    {
-        None,
-        Pickaxe,
-        Axe,
-        Shovel,
-    }
     public class ItemTool : Item
     {
-        public ToolType ToolType { get; set; } = ToolType.None;
-
-        public ItemTool(ToolType type, string description, float strength, float speed,
+        /// <summary>
+        /// Предмет инструмент
+        /// </summary>
+        /// <param name="type"> Тип предмета </param>
+        /// <param name="description"> Описание </param>
+        /// <param name="strength"> Прочность </param>
+        /// <param name="speed"> Скорость </param>
+        /// <param name="damage"> Урон </param>
+        /// <param name="spriteIndex"> Идентефикатор спрайта на листе </param>
+        public ItemTool(ItemType type, string description, float strength, float speed,
             float damage, int spriteIndex) 
-            : base(ItemType.Tool, type.ToString(), description, strength, damage, 
+            : base(type, type.ToString(), description, strength, damage, 
                   spriteIndex, 1)
         {
-            ToolType = type;
             Speed = speed;
         }
     }

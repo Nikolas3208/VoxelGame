@@ -5,10 +5,21 @@ namespace VoxelGame.Physics
 {
     public class AABB
     {
+        /// <summary>
+        /// Первая точка (наименьшая)
+        /// </summary>
         public Vector2f Min { get; set; }
+
+        /// <summary>
+        /// Вторая точка (наибольшая)
+        /// </summary>
         public Vector2f Max { get; set; }
 
+        /// <summary>
+        /// Сушность (родитель) может быть null
+        /// </summary>
         public Entity? Entity { get; set; }
+
 
         public AABB(Vector2f max)
         {
@@ -34,12 +45,24 @@ namespace VoxelGame.Physics
             Max = new Vector2f(x + w, y + h);
         }
 
+        /// <summary>
+        /// Проверить на пересечение
+        /// </summary>
+        /// <param name="other"> Второй колайдер </param>
+        /// <returns></returns>
         public bool Intersect(AABB other)
         {
             return Min.X < other.Max.X && Max.X > other.Min.X &&
                    Min.Y < other.Max.Y && Max.Y > other.Min.Y;
         }
 
+        /// <summary>
+        /// Проверка на пересечение с получением глубины и вектором направления
+        /// </summary>
+        /// <param name="other"> Второй колайдер </param>
+        /// <param name="normal"> Вектор направления </param>
+        /// <param name="depth"> Глубина </param>
+        /// <returns></returns>
         public bool Intersect(AABB other, out Vector2f normal, out float depth)
         {
             normal = new Vector2f();
@@ -71,6 +94,11 @@ namespace VoxelGame.Physics
             return false;
         }
 
+        /// <summary>
+        /// Преобразование колайдера (перемешение в вектор)
+        /// </summary>
+        /// <param name="position"> Вектор новой позиции </param>
+        /// <returns> Возвращает новый коллайдер с новой позицией </returns>
         public AABB Transform(Vector2f position)
         {
             return new AABB(Min + position, Max + position);

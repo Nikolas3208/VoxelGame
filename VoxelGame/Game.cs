@@ -27,7 +27,7 @@ namespace VoxelGame
 
             _windowSize = _window.Size;
 
-            _world = WorldGenerator.GenerateWorld(200, 200);
+            _world = WorldGenerator.GenerateWorld(600, 200);
         }
 
         public void Run()
@@ -57,9 +57,6 @@ namespace VoxelGame
             _world.Update(deltaTime);
 
             UIManager.Update(deltaTime);
-
-            DebugRender.AddRectangle(new FloatRect(GetMousePosition(), new Vector2f(16, 16)), Color.Green);
-            DebugRender.AddRectangle(new FloatRect(GetMousePositionByWorld(), new Vector2f(16, 16)), Color.Green);
         }
 
         public void Draw(RenderTarget target, RenderStates states)
@@ -67,7 +64,7 @@ namespace VoxelGame
             var cameraCenterPosition = _cameraPosition - (Vector2f)_window.Size / 2;
             var view = new View(new FloatRect(cameraCenterPosition, (Vector2f)_window.Size));
             if (Keyboard.IsKeyPressed(Keyboard.Key.R))
-                view.Zoom(2);
+                view.Zoom(4);
             else
                 view.Zoom(0.5f);
             _window.SetView(view);
@@ -83,6 +80,7 @@ namespace VoxelGame
             _cameraPosition = position;
         }
 
+        public static float GetZoom() => 0.5f;
         public static Vector2u GetWindowSize() => _windowSize;
         public static Vector2f GetMousePosition() => _mousePos;
         public static Vector2f GetMousePositionByWorld() => (_mousePos * 0.5f) + (_cameraPosition - ((Vector2f)_windowSize / 2 * 0.5f));

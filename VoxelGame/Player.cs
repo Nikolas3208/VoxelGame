@@ -12,31 +12,27 @@ namespace VoxelGame
 {
     public class Player : Entity
     {
-        private float maxSpeed = 150;
+        private float maxSpeed = 100;
         private bool isJumped = false;
+        private bool _inventoryOpened = false;
         private UIInventory _inventory;
         private Item.Item? _selectedItem;
 
         public Player(World world, AABB aabb) : base(world, aabb)
         {
             rect.FillColor = Color.Red;
-            _inventory = new UIInventory(new Vector2f(800, 100));
+            _inventory = new UIInventory(new Vector2f(UIInventoryCell.CellSize * 10, UIInventoryCell.CellSize));
 
             UIManager.AddWindow(_inventory);
 
-            _inventory.AddItem(Items.GetItem(ItemList.WoodPickaxe));
-            _inventory.AddItem(Items.GetItem(ItemList.WoodAxe));
-            _inventory.AddItem(Items.GetItem(ItemList.WoodShovel));
-            _inventory.AddItem(Items.GetItem(ItemList.Chest), 64);
-            _inventory.AddItem(Items.GetItem(ItemList.BoardWall), 64);
-            _inventory.AddItem(Items.GetItem(ItemList.Board), 64);
+            _inventory.AddItem(Items.GetItem(ItemList.Torch), 64);
         }
 
         public override void Update(float deltaTime)
         {
             if (!_inventory.IsFullInventoryVisible)
                 MouseUpdate();
-            _inventory.Position = new Vector2f(-480, Game.GetWindowSize().Y - 250) / 2 + Position;
+            _inventory.Position = new Vector2f(-1920 / 4, Game.GetWindowSize().Y - 250) / 4 + Position;
 
             for (int i = 0; i < 9; i++)
             {
@@ -49,12 +45,18 @@ namespace VoxelGame
             if(Keyboard.IsKeyPressed(Keyboard.Key.Num0))
                 _inventory.SetSelectedCell(9);
 
-            if(Keyboard.IsKeyPressed(Keyboard.Key.E))
+            if(Keyboard.IsKeyPressed(Keyboard.Key.E) && !_inventoryOpened)
             {
                 if (_inventory.IsFullInventoryVisible)
                     _inventory.HideInventory();
                 else 
                     _inventory.ShowInventory();
+
+                _inventoryOpened = true;
+            }
+            else if(!Keyboard.IsKeyPressed(Keyboard.Key.E))
+            {
+                _inventoryOpened = false;
             }
 
             _selectedItem = _inventory.GetItemWithSelectedCell();
@@ -69,11 +71,11 @@ namespace VoxelGame
 
                 if (isRunning && isMove && !isFall)
                 {
-                    maxSpeed = 250;
+                    maxSpeed = 200;
                 }
                 else
                 {
-                    maxSpeed = 150;
+                    maxSpeed = 100;
                 }
 
                 if (isMove)
@@ -100,15 +102,6 @@ namespace VoxelGame
                 }
                 else if (!isJump)
                     isJumped = false;
-
-                if (Keyboard.IsKeyPressed(Keyboard.Key.F))
-                {
-                    _inventory.CraftItem(ItemList.Board);
-                }
-                if (Keyboard.IsKeyPressed(Keyboard.Key.C))
-                {
-                    _inventory.CraftItem(ItemList.Stick);
-                }
             }
         }
 
@@ -121,9 +114,13 @@ namespace VoxelGame
             var chunk = world.GetChunkByWorldPosition((Vector2f)mousePos);
 
             bool mouseHoveredPlayer = !new FloatRect(Position, rect.Size).Contains(mousePos.X, mousePos.Y);
-            bool distanceToTile = true;// MathHelper.DistanceSquared((Vector2f)mousePos, Position) < 25000;
+            bool distanceToTile = MathHelper.DistanceSquared((Vector2f)mousePos, Position) < 25000;
             bool mouseLeftClick = Mouse.IsButtonPressed(Mouse.Button.Left);
             bool mouseRightClick = Mouse.IsButtonPressed(Mouse.Button.Right);
+            bool itemIsTool = _selectedItem != null && (_selectedItem.Type == ItemType.Axe || _selectedItem.Type == ItemType.Shovel || _selectedItem.Type == ItemType.Pickaxe);
+            bool itemIsPickaxe = _selectedItem != null && _selectedItem.Type == ItemType.Pickaxe;
+            bool itemIsAxe = _selectedItem != null && _selectedItem.Type == ItemType.Axe;
+            bool itemIsShovel = _selectedItem != null && _selectedItem.Type == ItemType.Shovel;
 
             if (chunk != null)
             {
@@ -134,30 +131,37 @@ namespace VoxelGame
                         if (_selectedItem != null)
                             breakingSpeed = _selectedItem.Speed;
                         else
-                            breakingSpeed = 1f;
+                            breakingSpeed = 2f;
 
                         var tile = chunk.GetTileByWorldPosition((Vector2f)mousePos);
-                        if (tile != null && mouseLeftClick && _selectedItem != null && _selectedItem.Type == ItemType.Tool)
+                        if (tile != null && mouseLeftClick && itemIsTool)
                         {
-                            chunk.BreakingTailByWorldPosition((Vector2f)mousePos, 0.01f * breakingSpeed);
+                            chunk.BreakingTailByWorldPosition((Vector2f)mousePos, 0.01f * breakingSpeed, _selectedItem!.Type);
                         }
                         else if (tile != null && mouseLeftClick && _selectedItem != null && _selectedItem.Type == ItemType.Tile)
                         {
-                            chunk.BreakingTailByWorldPosition((Vector2f)mousePos, 0.01f);
+                            chunk.BreakingTailByWorldPosition((Vector2f)mousePos, 0.01f, ItemType.None);
                         }
-                        else if (tile == null && mouseLeftClick && _selectedItem != null && _selectedItem.Type == ItemType.Tile)
+                        else if (tile != null && mouseLeftClick && _selectedItem == null)
                         {
-                            var itemTile = _selectedItem as ItemTile;
+                            chunk.BreakingTailByWorldPosition((Vector2f)mousePos, 0.01f, ItemType.None);
+                        }
+                        else if (tile == null && mouseRightClick && _selectedItem != null && _selectedItem.Type == ItemType.Tile)
+                        {
+                            //if (_selectedItem is ItemTile)
+                            {
+                                var itemTile = (ItemTile)_selectedItem;// as ItemTile;
 
-
-                            if (chunk.SetTileByWorldPosition((Vector2f)mousePos, itemTile!.TileType, itemTile!.IsWall))
-                                _inventory.GetSelectedCell()!.ItemStack!.ItemCount -= 1;
+                                if (chunk.SetTileByWorldPosition((Vector2f)mousePos, itemTile!.TileType, true, itemTile!.IsWall))
+                                    _inventory.GetSelectedCell()!.ItemStack!.ItemCount -= 1;
+                            }
                         }
                         else if (mouseRightClick)
                         {
                             var tileEntity = chunk.GetTileEntityByWorldPosition((Vector2f)mousePos);
                             if (tileEntity != null)
                             {
+                                _inventory.ShowInventory();
                                 tileEntity.Use();
                             }
                         }

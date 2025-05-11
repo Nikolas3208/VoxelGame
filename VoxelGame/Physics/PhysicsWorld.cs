@@ -7,13 +7,26 @@ namespace VoxelGame.Physics
 {
     public class PhysicsWorld
     {
+        /// <summary>
+        /// Сила гравитаии и направление
+        /// </summary>
         private Vector2f _gravity;
 
+        /// <summary>
+        /// Физический мир
+        /// </summary>
+        /// <param name="gravity"></param>
         public PhysicsWorld(Vector2f gravity)
         {
             _gravity = gravity;
         }
 
+        /// <summary>
+        /// Шаг физического мира
+        /// </summary>
+        /// <param name="deltaTime"> Время кадра </param>
+        /// <param name="entities"> Список сушностей </param>
+        /// <param name="chunks"> Список чанков </param>
         public void Step(float deltaTime, List<Entity> entities, List<Chunk> chunks)
         {
             // Update all entities in the world
@@ -74,6 +87,11 @@ namespace VoxelGame.Physics
             }
         }
 
+        /// <summary>
+        /// Шаг сушностей
+        /// </summary>
+        /// <param name="deltaTime"> Время кадра </param>
+        /// <param name="entities"> Список сушностей </param>
         public void EntitysStep(float deltaTime, List<Entity> entities)
         {
             // Update all entities in the world
@@ -83,11 +101,23 @@ namespace VoxelGame.Physics
             }
         }
 
+        /// <summary>
+        /// Могут ли эти сушности столкнуться
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
         bool CanCollide(Entity a, Entity b)
         {
             return (a.CollidesWith & b.Layer) != 0 && (b.CollidesWith & a.Layer) != 0;
         }
 
+        /// <summary>
+        /// Разрешение колиззи между сушностью и чанком
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="normal"></param>
+        /// <param name="depth"></param>
         private void ResolveCollisionWhithEntityAndChunk(Entity entity, Vector2f normal, float depth)
         {
             Vector2f relativeVelocity = entity.GetVelocity();
@@ -111,6 +141,13 @@ namespace VoxelGame.Physics
             entity.AddVelocity(impulse * 0.142f);
         }
 
+        /// <summary>
+        /// Разрешение коллизии между сушностями
+        /// </summary>
+        /// <param name="entityA"></param>
+        /// <param name="entityB"></param>
+        /// <param name="normal"></param>
+        /// <param name="depth"></param>
         private void ResolveCollisionWhithEntitys(Entity entityA, Entity entityB, Vector2f normal, float depth)
         {
             Vector2f relativeVelocity = entityB.GetVelocity() - entityA.GetVelocity();
@@ -128,6 +165,12 @@ namespace VoxelGame.Physics
             entityB.AddVelocity(impulse * 0.142f * 30);
         }
 
+        /// <summary>
+        /// Получить момент тела
+        /// </summary>
+        /// <param name="normal"></param>
+        /// <param name="relativeVeloity"></param>
+        /// <returns></returns>
         private Vector2f GeBodyMoment(Vector2f normal, Vector2f relativeVeloity)
         {
             float j = -1f * MathHelper.Dot(relativeVeloity, normal);

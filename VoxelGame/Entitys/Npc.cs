@@ -11,11 +11,11 @@ namespace VoxelGame.Entitys
     }
     public abstract class Npc : Entity
     {
-        public NpcType Type { get; set; }
+        public NpcType NpcType { get; set; }
 
         public Npc(World world, AABB aabb, NpcType type) : base(world, aabb)
         {
-            Type = type;
+            NpcType = type;
         }
 
         public override void Update(float deltaTime)

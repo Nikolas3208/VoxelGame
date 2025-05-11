@@ -2,7 +2,6 @@
 using SFML.System;
 using VoxelGame.Item;
 using VoxelGame.Physics;
-using VoxelGame.Resources;
 using VoxelGame.Worlds.Tile;
 
 namespace VoxelGame.Worlds
@@ -82,7 +81,7 @@ namespace VoxelGame.Worlds
         /// <param name="x"> Позиция чанка по Х в локальных координатах </param>
         /// <param name="y"> Позиция чанка по У в локальных координатах </param>
         /// <param name="chunk"> Чанк </param>
-        public void SetChunk(int x, int y, Chunk chunk) 
+        public void SetChunk(int x, int y, Chunk chunk)
         {
             if (_chanks == null)
                 return;
@@ -138,6 +137,8 @@ namespace VoxelGame.Worlds
         }
 
         object lockes = new object();
+        float timeOfDay = 0.5f; // 0.0 — полночь, 0.5 — полдень, 1.0 — снова полночь
+        float timeSpeed = 0.001f; // скорость времени
 
         /// <summary>
         /// Обновление мира
@@ -145,6 +146,9 @@ namespace VoxelGame.Worlds
         /// <param name="deltaTime"> Время кадра </param>
         public void Update(float deltaTime)
         {
+            timeOfDay += timeSpeed * deltaTime;
+            if (timeOfDay > 1f) timeOfDay -= 1f;
+
             var chunks = Task.Run(() => ChunkUpdate(deltaTime));
 
             drawbleChunk = chunks.Result;
@@ -179,11 +183,10 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Рисование мира
+        /// Поиск и обновление видимых чанков
         /// </summary>
-        /// <param name="target"></param>
-        /// <param name="states"></param>
-
+        /// <param name="deltaTime"></param>
+        /// <returns></returns>
         public Task<List<Chunk>> ChunkUpdate(float deltaTime)
         {
             var drawbleChunk = new List<Chunk>();
@@ -193,7 +196,7 @@ namespace VoxelGame.Worlds
             var TopMostTilesPos = (int)(tilePos.Item2 - tilesPerScreen.Item2);
 
 
-            for (int x = LeftMostTilesPos - 1; x < LeftMostTilesPos + tilesPerScreen.Item1 + 3; x++)
+            for (int x = LeftMostTilesPos + 4; x < LeftMostTilesPos + tilesPerScreen.Item1 + 3; x++)
             {
                 for (int y = TopMostTilesPos - 1; y < TopMostTilesPos + tilesPerScreen.Item2 + 2; y++)
                 {
@@ -213,15 +216,22 @@ namespace VoxelGame.Worlds
             return Task.FromResult(drawbleChunk);
         }
 
+        /// <summary>
+        /// Рисование мира
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="states"></param>
         public void Draw(RenderTarget target, RenderStates states)
         {
             states.Transform *= Transform;
+
+            Light.CalculateGlobalLight(timeOfDay);
 
             for (int i = 0; i < drawbleChunk.Count; i++)
             {
                 if (drawbleChunk[i] != null)
                 {
-                    
+
                     drawbleChunk[i].Draw(target, states);
                 }
             }
@@ -232,6 +242,10 @@ namespace VoxelGame.Worlds
             }
         }
 
+        /// <summary>
+        /// Получить игрока
+        /// </summary>
+        /// <returns></returns>
         public Player? GetPlayer()
         {
             return _entities.OfType<Player>().FirstOrDefault();
@@ -264,11 +278,21 @@ namespace VoxelGame.Worlds
             }
         }
 
+        /// <summary>
+        /// Получить выброшеный предмет
+        /// </summary>
+        /// <param name="dropItem"></param>
+        /// <returns></returns>
         public DropItem? GetItem(DropItem dropItem)
         {
             return _entities.OfType<DropItem>().FirstOrDefault(item => item != null && item.Item == dropItem.Item);
         }
 
+        /// <summary>
+        /// Удалить выброшеный предмет
+        /// </summary>
+        /// <param name="dropItem"></param>
+        /// <returns></returns>
         public bool RemoveItem(DropItem dropItem)
         {
             if (_entities.Contains(dropItem))

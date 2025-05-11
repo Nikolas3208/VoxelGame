@@ -15,6 +15,8 @@
         /// </summary>
         public CraftElement[] Items { get; }
 
+        public ItemList OutCraft { get; }
+
         /// <summary>
         /// Количество предметов, получаемых в результате крафта
         /// </summary>
@@ -29,8 +31,9 @@
         /// Конструктор
         /// </summary>
         /// <param name="itemCrafts"></param>
-        public Craft(int outCount, CraftTool tool, params CraftElement[] itemCrafts)
+        public Craft(int outCount, ItemList outCraft, CraftTool tool, params CraftElement[] itemCrafts)
         {
+            OutCraft = outCraft;
             OutCount = outCount;
             Tool = tool;
             Items = itemCrafts;

@@ -32,35 +32,18 @@ namespace VoxelGame.Worlds
                 var tile = chunk.GetTile(x, y);
                 var tileUp = chunk.GetTile(x, y - 1);
 
-                if(tile != null && tileUp == null)
+                if (tile != null && tileUp == null)
                 {
                     chunk.UpdateTileColor(BaseColor, x, y);
-                }
-                if (tile != null && tile.Type == TileType.Leaves)
-                {
-                    chunk.UpdateTileColor(Color.Green, x, y);
-                    continue;
                 }
 
                 if (tile != null && tileUp != null)
                 {
-                    if (tile.Type == TileType.Wood || tileUp.Type == TileType.Wood)
-                    {
-                        continue;
-                    }
-
                     int light = chunk.GetTileColor(x, y - 1).R;
 
-                    if (tileUp.IsWall || tile.IsWall)
-                    {
-                        light -= 16;
-                    }
-                    else
-                    {
-                        light -= 36;
-                    }
+                    light -= 36;
 
-                    if(light < 0)
+                    if (light < 0)
                         light = 0;
 
                     chunk.UpdateTileColor(new Color((byte)light, (byte)light, (byte)light), x, y);
@@ -79,22 +62,14 @@ namespace VoxelGame.Worlds
                 {
                     chunk.UpdateTileColor(BaseColor, x, y);
                 }
-                if (tile != null && tile.Type == TileType.Leaves)
-                {
-                    chunk.UpdateTileColor(Color.Green, x, y);
-                    continue;
-                }
 
                 if (tile != null && tileUp != null)
                 {
                     int lightLeftTile = chunk.GetTileColor(x, y + 1).R;
                     int light = chunk.GetTileColor(x, y).R;
                     int accumLight = lightLeftTile;
-                    
-                    if(tile.IsWall || tileUp.IsWall)
-                        accumLight = lightLeftTile - 16;
-                    else
-                        accumLight = lightLeftTile - 36;
+
+                    accumLight = lightLeftTile - 36;
 
                     if (accumLight < 0)
                         accumLight = 0;
@@ -117,22 +92,19 @@ namespace VoxelGame.Worlds
                 var tile = chunk.GetTile(x, y);
                 var tileLeft = chunk.GetTile(x - 1, y);
 
-                if(tile != null && tileLeft == null)
+                if (tile != null && tileLeft == null)
                 {
                     chunk.UpdateTileColor(BaseColor, x, y);
                 }
 
-                if(tile != null && tileLeft != null)
+                if (tile != null && tileLeft != null)
                 {
                     int lightLeftTile = chunk.GetTileColor(x - 1, y).R;
                     int light = chunk.GetTileColor(x, y).R;
 
                     int accumLight = lightLeftTile;
 
-                    if (tile.IsWall || tileLeft.IsWall)
-                        accumLight = lightLeftTile - 16;
-                    else
-                        accumLight = lightLeftTile - 36;
+                    accumLight = lightLeftTile - 36;
 
                     if (light < accumLight)
                         light = accumLight;
@@ -164,10 +136,7 @@ namespace VoxelGame.Worlds
 
                     int accumLight = lightLeftTile;
 
-                    if (tile.IsWall || tileLeft.IsWall)
-                        accumLight = lightLeftTile - 16;
-                    else
-                        accumLight = lightLeftTile - 36;
+                    accumLight = lightLeftTile - 36;
 
                     if (light < accumLight)
                         light = accumLight;
@@ -203,7 +172,7 @@ namespace VoxelGame.Worlds
                                 var tileColor = chunk.GetTileColor(x, y);
 
                                 //if (tileColor.R > light)
-                                    //light = chunk.GetTileColor(x, y).R;
+                                //light = chunk.GetTileColor(x, y).R;
 
                                 if (light > 255)
                                     light = 255;
@@ -214,6 +183,17 @@ namespace VoxelGame.Worlds
                     }
                 }
             }
+        }
+
+        public static Color CalculateGlobalLight(float t)
+        {
+            // Симметричная синусоида: 0.0 → ночь, 0.5 → день, 1.0 → ночь
+            float intensity = 0.2f + 0.8f * MathF.Sin(t * MathF.PI); // 0.2..1.0
+
+            byte light = (byte)(intensity * 255);
+            BaseColor = new Color(light, light, light);
+
+            return BaseColor;
         }
     }
 }

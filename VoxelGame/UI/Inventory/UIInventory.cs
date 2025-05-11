@@ -1,4 +1,7 @@
-﻿using SFML.System;
+﻿using SFML.Graphics;
+using SFML.System;
+using SFML.Window;
+using System.Security.Cryptography.X509Certificates;
 using VoxelGame.Item;
 
 namespace VoxelGame.UI.Inventory
@@ -6,27 +9,36 @@ namespace VoxelGame.UI.Inventory
     public class UIInventory : UIWindow
     {
         private UIInventoryCell? _selectedCell;
+        private UICraft _craft;
+
+        protected int CellCountX { get; set; } = 10;
+        protected int CellCountY { get; set; } = 6;
 
         public bool IsFullInventoryVisible { get; private set; } = false;
 
         public UIInventory(Vector2f size) : base(size, "Player Inventory")
         {
+            _craft = new UICraft(this);
+
             TitleBarIsVisible = false;
 
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < CellCountX; i++)
             {
-                childs.Add(new UIInventoryCell() { Position = new Vector2f(i * 80, 0), Perent = this });
+                Childs.Add(new UIInventoryCell() { Position = new Vector2f(i * UIInventoryCell.CellSize, 0), Perent = this });
             }
 
-            SetSelectedCell((UIInventoryCell)childs[0]);
+            SetSelectedCell((UIInventoryCell)Childs[0]);
 
-            for (int x = 0; x < 10; x++) 
+            for (int x = 0; x < CellCountX; x++) 
             {
-                for (int y = 1; y < 6; y++)
+                for (int y = 1; y < CellCountY; y++)
                 {
-                    childs.Add(new UIInventoryCell() { Position = new Vector2f(x * 80, -y * 80), Perent = this, IsVisible = false, IsUpdate = false });
+                    Childs.Add(new UIInventoryCell() { Position = new Vector2f(x * UIInventoryCell.CellSize, -y * UIInventoryCell.CellSize), Perent = this, IsVisible = false, IsUpdate = false });
                 }
             }
+
+            rect.Size = new Vector2f(Size.X, UIInventoryCell.CellSize);
+            rect.Origin = new Vector2f(UIItemStack.ItemStakSize, UIItemStack.ItemStakSize);
         }
 
         public void SetSelectedCell(int cellIndex)
@@ -34,7 +46,7 @@ namespace VoxelGame.UI.Inventory
             if (cellIndex < 0 || cellIndex > 10)
                 return;
 
-            SetSelectedCell((UIInventoryCell)childs[cellIndex]);
+            SetSelectedCell((UIInventoryCell)Childs[cellIndex]);
         }
 
         public void SetSelectedCell(UIInventoryCell inventoryCell)
@@ -84,105 +96,112 @@ namespace VoxelGame.UI.Inventory
             return _selectedCell.GetItem();
         }
 
-        public Item.Item? CraftItem(ItemList itemList)
+        public List<Craft> GetAvailableCrafts(CraftTool craftTool)
         {
-            var item = Items.GetItem(itemList);
-            if (item == null)
-                return null;
+            var crafts = new List<Craft>();
+            bool breakCraft = false;
 
-            var craft = item.GetCraft();
-            if (craft == null)
-                return null;
-
-            for(int i = 0; i < craft.Items.Length; i++)
+            for (int i = 1; i < Enum.GetNames<ItemList>().Length; i++)
             {
-                var itemCraft = craft.Items[i];
-                bool contains = false;
-                foreach (var cell in childs.Select(c => c as UIInventoryCell))
+                var item = Items.GetItem((ItemList)i);
+
+                if (item == null)
+                    continue;
+
+                var iCrafts = item.GetCrafts();
+
+                if (iCrafts == null)
+                    continue;
+
+                breakCraft = false;
+
+                foreach (var craft in iCrafts)
                 {
-                    var cellItem = cell!.GetItem();
-
-                    if (cellItem == null)
-                        continue;
-
-                    if (cellItem!.ItemList == itemCraft.Item && cell.ItemStack!.ItemCount >= itemCraft.Count)
+                    for(int i2 = 0; i2 < craft.Items.Length; i2++)
                     {
-                        contains = true;
-                        break;
-                    }
-                }
+                        var itemC = craft.Items[i2];
 
-                if (!contains)
-                    return null;
-            }
-
-
-
-            if (AddItem(item, craft.OutCount))
-            {
-                for (int i = 0; i < craft.Items.Length; i++)
-                {
-                    var itemCraft = craft.Items[i];
-                    foreach (var cell in childs.Select(c => c as UIInventoryCell))
-                    {
-                        var cellItem = cell!.GetItem();
-
-                        if (cellItem == null)
-                            continue;
-
-                        if (cellItem!.ItemList == itemCraft.Item && cell.ItemStack!.ItemCount >= itemCraft.Count)
+                        if (GetItemCount(itemC.Item) < itemC.Count)
                         {
-                            cell.ItemStack.ItemCount -= itemCraft.Count;
                             break;
+                        }
+
+                        if(i2 == craft.Items.Length - 1)
+                        {
+                            crafts.Add(craft);
                         }
                     }
                 }
-
-                return item;
             }
 
-            return null;
+            return crafts;
+        }
+
+        public int GetItemCount(ItemList item)
+        {
+            var itemStack = GetItemStackByItem(item);
+
+            if (itemStack == null) return 0;
+
+            return itemStack.ItemCount;
+        }
+
+        public UIItemStack? GetItemStackByItem(ItemList item)
+        {
+            var cell = GetCellByItem(item);
+
+            if(cell == null) return null;
+
+            return cell.ItemStack;
+        }
+
+        public UIInventoryCell? GetCellByItem(ItemList item)
+        {
+            return Childs.Select(c => c as UIInventoryCell).ToList()
+                .Find(c => c!.GetItem() != null && c!.GetItem()!.ItemList == item);
         }
 
         private UIInventoryCell? GetSuitableCell(UIItemStack itemStack, int count = 1)
         {
             var type = itemStack.ItemType;
 
-            var cells = childs.Select(c => c as UIInventoryCell).ToList();
+            var cells = Childs.Select(c => c as UIInventoryCell).ToList();
 
             var cellResult = cells.Find(cell => cell != null && cell.ItemStack != null
-                   && cell.ItemStack.ItemType == type && cell.ItemStack.Item.Name == itemStack.Item.Name && !cell.ItemStack.IsFull);
+                   && cell.ItemStack.ItemType == type && cell.ItemStack.Item.ItemList == itemStack.Item.ItemList && !cell.ItemStack.IsFull);
 
             return cellResult;
         }
 
         private UIInventoryCell? GetEmptyCell()
         {
-            var cells = childs.Select(c => c as UIInventoryCell).ToList();
+            var cells = Childs.Select(c => c as UIInventoryCell).ToList();
 
             return cells.Find(cell => cell != null && cell.ItemStack == null);
         }
 
         public UIInventoryCell? GetSelectedCell()
         {
-            return childs.Select(c => c as UIInventoryCell).ToList().Find(cell => cell!.IsSelected);
+            return Childs.Select(c => c as UIInventoryCell).ToList().Find(cell => cell!.IsSelected);
         }
 
         public void ShowInventory()
         {
-            rect.Size = new Vector2f(Size.X, 550);
-            rect.Origin = new Vector2f(40, 520);
+            rect.Size = new Vector2f(Size.X, UIInventoryCell.CellSize * CellCountY);
+            rect.Origin = new Vector2f(UIItemStack.ItemStakSize, UIInventoryCell.CellSize * CellCountY - UIInventoryCell.CellSize / 2);
+
             IsFullInventoryVisible = true;
 
-            for (int x = 0; x < 10; x++)
+            for (int x = 0; x < CellCountX; x++)
             {
-                for (int y = 0; y < 6; y++)
+                for (int y = 0; y < CellCountY; y++)
                 {
-                    int index = x + y * 10;
+                    int index = x + y * CellCountX;
 
-                    var child = childs[index];
+                    var child = Childs[index];
                     child.IsVisible = true;
                     child.IsUpdate = true;
+                    child.CanDrop = true;
                 }
             }
         }
@@ -190,19 +209,22 @@ namespace VoxelGame.UI.Inventory
         public void HideInventory()
         {
             IsFullInventoryVisible = false;
-            rect.Size = new Vector2f(800, 100);
-            rect.Origin = new Vector2f(40, 50);
 
-            for (int x = 0; x < 10; x++)
+            rect.Size = new Vector2f(Size.X, UIInventoryCell.CellSize);
+            rect.Origin = new Vector2f(UIItemStack.ItemStakSize, UIItemStack.ItemStakSize);
+
+            for (int x = 0; x < CellCountX; x++)
             {
-                for (int y = 1; y < 6; y++)
+                for (int y = 1; y < CellCountY; y++)
                 {
-                    int index = x + y * 10;
+                    int index = x + y * CellCountX;
 
-                    var child = childs[index];
+                    var child = Childs[index];
 
                     child.IsVisible = false;
                     child.IsUpdate = false;
+                    child.CanDrag = false;
+                    child.CanDrop = false;
                 }
             }
         }
@@ -210,6 +232,36 @@ namespace VoxelGame.UI.Inventory
         public override void Update(float deltaTime)
         {
             base.Update(deltaTime);
+
+            _craft.UpdateOver(deltaTime);
+
+            if (IsFullInventoryVisible)
+            {
+                _craft.Position = new Vector2f(-Game.GetWindowSize().X / 2 * Game.GetZoom() + 140, -Game.GetWindowSize().Y / 2 * Game.GetZoom() - 80)  + Position;
+                _craft.Update(deltaTime);
+            }
+        }
+
+        public override void UpdateOver(float deltaTime)
+        {
+            base.UpdateOver(deltaTime);
+
+            if (!IsFullInventoryVisible && IsHovered && Mouse.IsButtonPressed(Mouse.Button.Left))
+            {
+                var select = (UIInventoryCell)Childs.Find(c => c.IsHovered);
+                if (select != null)
+                {
+                    SetSelectedCell(select);
+                }
+            }
+        }
+
+        public override void Draw(RenderTarget target, RenderStates states)
+        {
+            base.Draw(target, states);
+
+            if (IsFullInventoryVisible)
+                _craft.Draw(target, states);
         }
     }
 }

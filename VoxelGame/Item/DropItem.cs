@@ -23,9 +23,9 @@ namespace VoxelGame.Item
         /// <summary>
         /// Конструктор
         /// </summary>
-        /// <param name="item"></param>
-        /// <param name="aabb"></param>
-        /// <param name="world"></param>
+        /// <param name="item"> Предмет </param>
+        /// <param name="aabb"> Границы (размер) </param>
+        /// <param name="world"> Мир </param>
         public DropItem(Item item, AABB aabb, World world) : base(world, aabb)
         {
             Item = item;
@@ -54,7 +54,7 @@ namespace VoxelGame.Item
         /// <summary>
         /// Обновление предмета
         /// </summary>
-        /// <param name="deltaTime"></param>
+        /// <param name="deltaTime"> Время кадра </param>
         public override void Update(float deltaTime)
         {
             animAngle += deltaTime * 3f;
@@ -83,8 +83,8 @@ namespace VoxelGame.Item
         /// <summary>
         /// Добавить предмет в стак
         /// </summary>
-        /// <param name="item"></param>
-        /// <param name="count"></param>
+        /// <param name="item"> Предмет </param>
+        /// <param name="count"> Количество </param>
         /// <returns></returns>
         public bool AddItem(Item item, int count)
         {

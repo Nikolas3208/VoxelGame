@@ -13,7 +13,7 @@ namespace VoxelGame.Worlds.Tile
         public bool IsOpen { get; set; } = false;
         public ChestEntity() : base(TileEntityType.Chest)
         {
-            _chestInventory = new UIChestInventory(new Vector2f(800, 600));
+            _chestInventory = new UIChestInventory(new Vector2f(UIInventoryCell.CellSize * 10, UIInventoryCell.CellSize * 6));
             _chestInventory.Position = Position;
         }
 
@@ -21,7 +21,8 @@ namespace VoxelGame.Worlds.Tile
         {
             IsOpen = true;
 
-            _chestInventory.Position = Position + Chunk!.Position;
+            _chestInventory.Position = Game.GetCameraPosition();
+            _chestInventory.Origin = new Vector2f(_chestInventory.Size.X / 2 - UIInventoryCell.CellSize - 8, 0);
             _chestInventory.ShowInventory();
             UIManager.AddWindow(_chestInventory);
         }

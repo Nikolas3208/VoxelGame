@@ -7,18 +7,16 @@ namespace VoxelGame.Worlds
     public class ChunkMesh
     {
         private Chunk _chunk;
+        private Vertex[] _mesh;
 
         public int OneTileVerticesCount { get; } = 6;
 
-        public Vertex[] Mesh;
-        public InfoTile[] Tiles;
 
         public ChunkMesh(Chunk chunk)
         {
             _chunk = chunk;
 
-            Mesh = new Vertex[Chunk.ChunkSize * Chunk.ChunkSize * OneTileVerticesCount];
-            Tiles = new InfoTile[Chunk.ChunkSize * Chunk.ChunkSize];
+            _mesh = new Vertex[Chunk.ChunkSize * Chunk.ChunkSize * OneTileVerticesCount];
         }
 
         public void SetTileToMesh(int x, int y, InfoTile tile, Color color)
@@ -28,29 +26,25 @@ namespace VoxelGame.Worlds
 
             int index = x * Chunk.ChunkSize * OneTileVerticesCount + y * OneTileVerticesCount;
 
-            color = tile?.Type == TileType.Leaves ? Color.Green : color;
-            color = tile?.Type == TileType.Wood ? Color.White: color;
-
             if (tile != null && tile.Type != TileType.None)
             {
                 var texCoords = TexCoordsByTileType.GetTexCoords(tile.Type);
 
-                Mesh[index + 0] = new Vertex(new Vector2f(x * tile.Size.X, y * tile.Size.Y), color, new Vector2f(texCoords.Item1, texCoords.Item2));
-                Mesh[index + 1] = new Vertex(new Vector2f(x * tile.Size.X, y * tile.Size.Y + tile.Size.Y), color, new Vector2f(texCoords.Item1, 16 + texCoords.Item2));
-                Mesh[index + 2] = new Vertex(new Vector2f(x * tile.Size.X + tile.Size.X, y * tile.Size.Y), color, new Vector2f(16 + texCoords.Item1, texCoords.Item2));
-                Mesh[index + 3] = new Vertex(new Vector2f(x * tile.Size.X + tile.Size.X, y * tile.Size.Y), color, new Vector2f(16 + texCoords.Item1, texCoords.Item2));
-                Mesh[index + 4] = new Vertex(new Vector2f(x * tile.Size.X, y * tile.Size.Y + tile.Size.Y), color, new Vector2f(texCoords.Item1, 16 + texCoords.Item2));
-                Mesh[index + 5] = new Vertex(new Vector2f(x * tile.Size.X + tile.Size.X, y * tile.Size.Y + tile.Size.Y), color, new Vector2f(16 + texCoords.Item1, 16 + texCoords.Item2));
+                _mesh[index + 0] = new Vertex(new Vector2f(x * tile.Size.X, y * tile.Size.Y), color, new Vector2f(texCoords.Item1, texCoords.Item2));
+                _mesh[index + 1] = new Vertex(new Vector2f(x * tile.Size.X, y * tile.Size.Y + tile.Size.Y), color, new Vector2f(texCoords.Item1, 16 + texCoords.Item2));
+                _mesh[index + 2] = new Vertex(new Vector2f(x * tile.Size.X + tile.Size.X, y * tile.Size.Y), color, new Vector2f(16 + texCoords.Item1, texCoords.Item2));
+                _mesh[index + 3] = new Vertex(new Vector2f(x * tile.Size.X + tile.Size.X, y * tile.Size.Y), color, new Vector2f(16 + texCoords.Item1, texCoords.Item2));
+                _mesh[index + 4] = new Vertex(new Vector2f(x * tile.Size.X, y * tile.Size.Y + tile.Size.Y), color, new Vector2f(texCoords.Item1, 16 + texCoords.Item2));
+                _mesh[index + 5] = new Vertex(new Vector2f(x * tile.Size.X + tile.Size.X, y * tile.Size.Y + tile.Size.Y), color, new Vector2f(16 + texCoords.Item1, 16 + texCoords.Item2));
             }
             else
             {
-
-                Mesh[index + 0] = new Vertex();
-                Mesh[index + 1] = new Vertex();
-                Mesh[index + 2] = new Vertex();
-                Mesh[index + 3] = new Vertex();
-                Mesh[index + 4] = new Vertex();
-                Mesh[index + 5] = new Vertex();
+                _mesh[index + 0] = new Vertex();
+                _mesh[index + 1] = new Vertex();
+                _mesh[index + 2] = new Vertex();
+                _mesh[index + 3] = new Vertex();
+                _mesh[index + 4] = new Vertex();
+                _mesh[index + 5] = new Vertex();
             }
         }
 
@@ -61,27 +55,27 @@ namespace VoxelGame.Worlds
 
             int index = x * Chunk.ChunkSize * OneTileVerticesCount + y * OneTileVerticesCount;
 
-            Mesh[index + 0].Color = color;
-            Mesh[index + 1].Color = color;
-            Mesh[index + 2].Color = color;
-            Mesh[index + 3].Color = color;
-            Mesh[index + 4].Color = color;
-            Mesh[index + 5].Color = color;
+            _mesh[index + 0].Color = color;
+            _mesh[index + 1].Color = color;
+            _mesh[index + 2].Color = color;
+            _mesh[index + 3].Color = color;
+            _mesh[index + 4].Color = color;
+            _mesh[index + 5].Color = color;
         }
 
         public Color GetTileColor(int x, int y)
         {
             int index = x * Chunk.ChunkSize * OneTileVerticesCount + y * OneTileVerticesCount;
 
-            if (index >= Mesh.Length)
+            if (index >= _mesh.Length)
                 return Color.Black;
 
-            return Mesh[index + 0].Color;
+            return _mesh[index + 0].Color;
         }
 
         public Vertex[] GetChunkMesh()
         {
-            return Mesh;
+            return _mesh;
         }
     }
 }

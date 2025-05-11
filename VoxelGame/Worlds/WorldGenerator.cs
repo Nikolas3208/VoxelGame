@@ -121,14 +121,16 @@ public static class WorldGenerator
                     // Шанс на дерево
                     if (_perlin.Random.NextDouble() < 0.09) // 9%
                     {
+                        TileType treeType = _perlin.Random.Next(0, 2) == 1 ? TileType.Oak : TileType.Birch;
+
                         int treeHeight = _perlin.Random.Next(6, 12);
 
                         // Ставим ствол
                         for (int h = 1; h <= treeHeight; h++)
                         {
-                            if(!chunk.SetTile(x, y - h, TileType.Wood))
+                            if(!chunk.SetTile(x, y - h, treeType))
                             {
-                                world.GetChunkByWorldPosition(chunk.Position - new Vector2f(0, 1))?.SetTile(x, Chunk.ChunkSize + (y - h), TileType.Wood);
+                                world.GetChunkByWorldPosition(chunk.Position - new Vector2f(0, 1))?.SetTile(x, Chunk.ChunkSize + (y - h), treeType);
                             }
                         }
 

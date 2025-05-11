@@ -9,6 +9,8 @@ namespace VoxelGame.UI.Inventory
 {
     public class UIItemStack : UIBase
     {
+        public const int ItemStakSize = 16;
+
         private Text _text;
 
         private int _itemCount;
@@ -57,15 +59,22 @@ namespace VoxelGame.UI.Inventory
                     break;
             }
 
-            rect = new RectangleShape(new Vector2f(48, 48));
+            rect = new RectangleShape(new Vector2f(ItemStakSize, ItemStakSize));
             rect.Texture = spriteSheet.Texture;
             rect.TextureRect = spriteSheet.GetTextureRect(infoItem.SpriteIndex);
             rect.Origin = Size;
             rect.Position = Size / 2;
 
+            if(infoItem is ItemTile)
+            {
+                if ((infoItem as ItemTile).IsWall)
+                    rect.FillColor = new Color(175, 175, 175);
+            }
+
             _text = new Text(ItemCount.ToString(), AssetManager.GetFont("Arial"));
             _text.Position = rect.Position - new Vector2f(30, 20);
             _text.FillColor = Color.White;
+            _text.CharacterSize = 16;
 
             ItemCount = 1;
 
@@ -85,9 +94,9 @@ namespace VoxelGame.UI.Inventory
             if(IsHovered)
             {
                 DebugRender.AddText(UIManager.MousePosition - new Vector2f(0, 150), $"{Item.Name}\n" +
-                                                             $"{Item.Description}\n" +
-                                                             $"{Item.Speed}" +
-                                                             $"{Item.Damage}");
+                                                             $"Описание: {Item.Description}\n" +
+                                                             $"Скорость: {Item.Speed}\n" +
+                                                             $"Урон: {Item.Damage}");
 
                 if (UIManager.Drag == null)
                 {

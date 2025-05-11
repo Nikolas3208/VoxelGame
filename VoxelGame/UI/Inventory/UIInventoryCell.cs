@@ -6,7 +6,11 @@ namespace VoxelGame.UI.Inventory
 {
     public class UIInventoryCell : UIBase
     {
-        private UIItemStack _itemStack;
+        public const int CellSize = 32;
+
+        private bool _isSelected = false;
+
+        private UIItemStack? _itemStack;
         public UIItemStack? ItemStack
         {
             get => _itemStack;
@@ -15,6 +19,11 @@ namespace VoxelGame.UI.Inventory
                 if(_itemStack != null && value != null && _itemStack.Item.ItemList == value.Item.ItemList)
                 {
                     _itemStack.ItemCount += value.ItemCount;
+
+                    if (_itemStack.ItemCount < 0)
+                    {
+                        _itemStack = null;
+                    }
                     return;
                 }
 
@@ -29,16 +38,38 @@ namespace VoxelGame.UI.Inventory
             }
         }
 
-        public bool IsSelected { get; set; } = false;
+        public bool IsSelected 
+        { 
+            get => _isSelected;
+            set
+            {
+                _isSelected = value;
+                if (value)
+                {
+                    rect.Size = new Vector2f(CellSize + 8, CellSize + 8);
+                    rect.Origin = Size / 2;
+                }
+                else
+                {
+                    rect.Size = new Vector2f(CellSize, CellSize);
+                    rect.Origin = Size / 2;
+                }
+            }
+        }
 
         public UIInventoryCell()
         {
-            rect = new RectangleShape(new Vector2f(80, 80));
+            rect = new RectangleShape(new Vector2f(CellSize, CellSize));
             rect.Texture = AssetManager.GetTexture("ui/inventory_cell");
 
             rect.Origin = Size / 2;
 
             CanDrop = true;
+        }
+
+        public override void Update(float deltaTime)
+        {
+            base.Update(deltaTime);
         }
 
         public override void OnDrop(UIBase drop)
