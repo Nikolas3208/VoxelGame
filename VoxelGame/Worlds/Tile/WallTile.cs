@@ -10,7 +10,6 @@ namespace VoxelGame.Worlds.Tile
         GroundWall,
         StoneWall,
         OakBoardWall,
-        BirchBoardWall
     }
 
     public class WallTile : ITile
@@ -145,10 +144,11 @@ namespace VoxelGame.Worlds.Tile
         /// <param name="reqiuredToolPower"> Мощность требуемого инструмента </param>
         /// <param name="strength"> Прочность стенки </param>
         /// <param name="isSolid"> Стенка твердая? </param>
-        public WallTile(WallType type, ItemType requiredTool, int reqiuredToolPower, float strength, bool isSolid, Chunk perentChunk,
-            WallTile? upWall, WallTile? downWall, WallTile? leftWall, WallTile? rightWall, Vector2f localPosition)
+        public WallTile(WallType type, ItemList dropItem, ItemType requiredTool, int reqiuredToolPower, float strength, bool isSolid,
+            Chunk perentChunk, WallTile? upWall, WallTile? downWall, WallTile? leftWall, WallTile? rightWall, Vector2f localPosition)
         {
             Type = type;
+            DropItem = dropItem;
             RequiredTool = requiredTool;
             RequiredToolPower = reqiuredToolPower;
             Strength = strength;
@@ -337,13 +337,16 @@ namespace VoxelGame.Worlds.Tile
         /// <param name="type"> Тип предмета </param>
         /// <param name="itemPower"> Мошность предмета </param>
         /// <returns> Если здоровье плитки 0 или меньше true </returns>
-        public bool BreakingTile(ItemType type, float itemPower, float damage)
+        public bool Breaking(ItemType type, float itemPower, float damage)
         {
-            if (type == RequiredTool && itemPower >= RequiredToolPower)
+            if (UpWall == null || DownWall == null || LeftWall == null || RightWall == null)
             {
-                Strength -= damage;
-                if (Strength <= 0)
-                    return true;
+                if (type == RequiredTool && itemPower >= RequiredToolPower)
+                {
+                    Strength -= damage;
+                    if (Strength <= 0)
+                        return true;
+                }
             }
 
             return false;

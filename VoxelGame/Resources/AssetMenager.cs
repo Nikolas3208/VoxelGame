@@ -57,11 +57,11 @@ namespace VoxelGame.Resources
         /// <param name="abIsCount"> размер плитки это поличество плиток по ширине и высоте </param>
         /// <param name="borderSize"> Расстояние между спрайтами </param>
         /// <returns></returns>
-        public static SpriteSheet GetSpriteSheet(string name, int tileSize = 16, bool abIsCount = false, int borderSize = 0)
+        public static SpriteSheet GetSpriteSheet(string name, int tileSizeX = 16, int tileSizeY = 16, bool abIsCount = false, int borderSize = 0)
         {
             Texture texture = GetTexture(name);
 
-            return new SpriteSheet(tileSize, tileSize, abIsCount, borderSize, texture);
+            return new SpriteSheet(tileSizeX, tileSizeY, abIsCount, borderSize, texture);
         }
 
         private static Font font = new Font("arial.ttf");

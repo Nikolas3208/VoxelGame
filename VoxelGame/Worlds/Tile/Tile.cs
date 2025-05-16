@@ -24,7 +24,8 @@ namespace VoxelGame.Worlds.Tile
         Chest,
         Torch,
         Stove,
-        Anvil
+        Anvil,
+        Vegetation
     }
     public class Tile : ITile
     {
@@ -34,6 +35,8 @@ namespace VoxelGame.Worlds.Tile
         protected Tile? _downTile;
         protected Tile? _leftTile;
         protected Tile? _rightTile;
+
+        protected WallTile? _wallTile;
 
         protected Vertex[] _vertices;
 
@@ -144,6 +147,16 @@ namespace VoxelGame.Worlds.Tile
             }
         }
 
+        public WallTile? WallTile
+        {
+            get => _wallTile;
+            set
+            {
+                _wallTile = value;
+                UpdateView();
+            }
+        }
+
         /// <summary>
         /// Мировая позиция плитки
         /// </summary>
@@ -168,7 +181,7 @@ namespace VoxelGame.Worlds.Tile
         /// <param name="strength"> Прочность плитки </param>
         /// <param name="isSolid"> Плитка твердая? </param>
         public Tile(TileType type, ItemList dropItem, ItemType requiredTool, int reqiuredToolPower, float strength, bool isSolid, Chunk perentChunk,
-            Tile? upTile, Tile? downTile, Tile? leftTile, Tile? rightTile, Vector2f localPosition)
+            Tile? upTile, Tile? downTile, Tile? leftTile, Tile? rightTile, WallTile? wall, Vector2f localPosition)
         {
             Type = type;
             DropItem = dropItem;
@@ -203,6 +216,8 @@ namespace VoxelGame.Worlds.Tile
                 _rightTile = rightTile;
                 _rightTile.LeftTile = this;    // Для правого соседа эта плитка будет левым соседом
             }
+
+            WallTile = wall;
 
             UpdateView();
         }
@@ -360,16 +375,19 @@ namespace VoxelGame.Worlds.Tile
         /// <param name="type"> Тип предмета </param>
         /// <param name="itemPower"> Мошность предмета </param>
         /// <returns> Если здоровье плитки 0 или меньше true </returns>
-        public virtual bool BreakingTile(ItemType type, float itemPower, float damage)
+        public virtual bool Breaking(ItemType type, float itemPower, float damage)
         {
             if (type == RequiredTool && itemPower >= RequiredToolPower)
             {
+                if (UpTile != null && this is not TileTree && UpTile is TileTree)
+                    return false;
+
                 Strength -= damage;
                 if (Strength <= 0)
                     return true;
             }
 
-            if(type == ItemType.All)
+            if(RequiredTool == ItemType.All || RequiredTool == ItemType.None)
             {
                 Strength -= damage;
                 if (Strength <= 0)

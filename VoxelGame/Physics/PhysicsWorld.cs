@@ -1,5 +1,4 @@
-﻿using SFML.Graphics;
-using SFML.System;
+﻿using SFML.System;
 using VoxelGame.Meths;
 using VoxelGame.Worlds;
 
@@ -55,19 +54,13 @@ namespace VoxelGame.Physics
 
                                 ResolveCollisionWhithEntityAndChunk(entity, normal, depth);
                                 entity.OnCollided(null, normal, depth);
-
-                                entity.Color = Color.Black;
-                            }
-                            else
-                            {
-                                entity.Color = Color.White;
                             }
                         }
                     }
                 }
 
                 // Check for collisions with other entities
-                for(int j = i + 1; j < entities.Count; j++)
+                for (int j = i + 1; j < entities.Count; j++)
                 {
                     var otherEntity = entities[j];
 

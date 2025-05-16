@@ -133,7 +133,7 @@ namespace VoxelGame.Item
                 .SetItem(items),
 
                 //Печка
-                ItemList.Stove => GetItemTileByTile(TileType.Stove)
+                ItemList.Stove => GetItemTileByTile(TileType.Stove, 1)
                 .SetCrafts(new Craft(1, items, CraftTool.Workbench, new CraftElement(ItemList.Stone, 15)))
                 .SetItem(items),
 
@@ -166,14 +166,14 @@ namespace VoxelGame.Item
         /// <param name="type"> Тип плитки </param>
         /// <param name="isWall"> Это стена? </param>
         /// <returns></returns>
-        public static ItemTile GetItemTileByTile(TileType type)
+        public static ItemTile GetItemTileByTile(TileType type, int maxCountInStack = 64)
         {
-            return new ItemTile(type,  64);
+            return new ItemTile(type, maxCountInStack);
         }
 
-        public static ItemTile GetItemTileByWall(WallType type)
+        public static ItemTile GetItemTileByWall(WallType type, int maxCountInStack = 64)
         {
-            return new ItemTile(type, 64);
+            return new ItemTile(type, maxCountInStack);
         }
     }
 }

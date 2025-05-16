@@ -100,9 +100,16 @@ public static class WorldGenerator
             int cY = heightMap[cX] - y;
             var tile = chunk.GetTile(cX, cY);
 
-            if (tile != null && tile.Type == TileType.Ground)
+            // Если это земля и над ней пусто, то ставим траву
+            if (tile != null && tile.Type == TileType.Ground && chunk.GetTile(cX, cY - 1) == null)
             {
                 chunk.SetTile(cX, cY, TileType.Grass);
+
+                if (_perlin.Random.NextDouble() < 0.30) // 30%
+                {
+                    // Шанс на траву
+                    chunk.SetTile(cX, cY - 1, TileType.Vegetation);
+                }
             }
         }
 

@@ -66,6 +66,6 @@ namespace VoxelGame.Worlds.Tile
         /// <param name="type"> Тип предмета </param>
         /// <param name="itemPower"> Мошность предмета </param>
         /// <returns> Если здоровье плитки 0 или меньше true </returns>
-        bool BreakingTile(ItemType type, float itemPower, float damage);
+        bool Breaking(ItemType type, float itemPower, float damage);
     }
 }

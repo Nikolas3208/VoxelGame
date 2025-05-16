@@ -14,10 +14,10 @@ namespace VoxelGame.Worlds.Tile
         public new TileWorkbench PerentTile { get => _perentTile; set { _perentTile = value; base.PerentTile = value; UpdateView(); } }
 
         public TileWorkbench(TileType type, ItemList dropItem, ItemType requiredTool, int reqiuredToolPower, float strength, bool isSolid,
-            Chunk perentChunk, Tile? upTile, Tile? downTile, Tile? leftTile, Tile? rightTile, Vector2f localPosition) :
-            base(type, dropItem, requiredTool, reqiuredToolPower, strength, isSolid, perentChunk, upTile, downTile, leftTile, rightTile, localPosition)
+                    Chunk perentChunk, Tile? upTile, Tile? downTile, Tile? leftTile, Tile? rightTile, WallTile? wall, Vector2f localPosition) 
+            : base(type, dropItem, requiredTool, reqiuredToolPower, strength, isSolid, perentChunk, upTile, downTile, leftTile, rightTile, wall, localPosition)
         {
-
+            Size = new Vector2f(2, 1);
         }
 
         public override void UpdateView()

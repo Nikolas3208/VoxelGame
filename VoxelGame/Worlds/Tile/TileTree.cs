@@ -15,9 +15,9 @@ namespace VoxelGame.Worlds.Tile
 
 
         public TileTree(TileType type, ItemList dropItem, ItemType requiredTool, int reqiuredToolPower, float strength, bool isSolid, 
-            Chunk perentChunk, Tile? upTile, Tile? downTile, Tile? leftTile, Tile? rightTile, Vector2f localPosition, bool treeTopTile = false) 
+            Chunk perentChunk, Tile? upTile, Tile? downTile, Tile? leftTile, Tile? rightTile, WallTile? wall, Vector2f localPosition, bool treeTopTile = false) 
             : base(type, dropItem, requiredTool, reqiuredToolPower, strength, isSolid,
-                  perentChunk, upTile, downTile, leftTile, rightTile, localPosition)
+                  perentChunk, upTile, downTile, leftTile, rightTile, wall, localPosition)
         {
             IsTreeTop = treeTopTile;
 

@@ -74,7 +74,7 @@ namespace VoxelGame.Worlds
             _entities = new List<Entity>();
             _dropItems = new List<DropItem>();
 
-            _entities.Add(new Player(this, new AABB(16, 32)) { Position = new Vector2f(height * Tile.Tile.TileSize / 2, 0) });
+            _entities.Add(new Player(this, new AABB(28, 46)) { Position = new Vector2f(height * Tile.Tile.TileSize / 2, 0) });
         }
 
         /// <summary>
@@ -168,6 +168,7 @@ namespace VoxelGame.Worlds
                             Light.LightingChunk(chunk, drawbleChunk, new List<Vector2f>());
                             chunk.Update(deltaTime);
                             drawbleChunk.Add(chunk);
+                            DebugRender.AddRectangle(chunk.GetAABB(), Color.Red);
                         }
                     }
                 }
@@ -278,7 +279,8 @@ namespace VoxelGame.Worlds
 
         public void DropItem(ItemList item, Vector2f position)
         {
-            DropItem(Items.GetItem(item), position);
+            if (item != ItemList.None)
+                DropItem(Items.GetItem(item), position);
         }
 
         /// <summary>
