@@ -44,23 +44,16 @@ namespace VoxelGame.UI.Inventory
             set
             {
                 _isSelected = value;
-                if (value)
-                {
-                    rect.Size = new Vector2f(CellSize + 8, CellSize + 8);
-                    rect.Origin = Size / 2;
-                }
-                else
-                {
-                    rect.Size = new Vector2f(CellSize, CellSize);
-                    rect.Origin = Size / 2;
-                }
+
+                rect.FillColor = value ? new Color(255, 255, 0, 255) : new Color(100, 100, 255, 127);
             }
         }
 
         public UIInventoryCell()
         {
             rect = new RectangleShape(new Vector2f(CellSize, CellSize));
-            rect.Texture = AssetManager.GetTexture("ui/inventory_cell");
+            rect.Texture = AssetManager.GetTexture("Inventory_Back");
+            rect.FillColor = new Color(100, 100, 255, 127);
 
             rect.Origin = Size / 2;
 

@@ -47,29 +47,10 @@ namespace VoxelGame.UI.Inventory
         {
             Item = infoItem;
 
-            SpriteSheet spriteSheet;
-
-            switch(infoItem.Type)
-            {
-                case ItemType.Tile:
-                    spriteSheet = AssetManager.GetSpriteSheet("terrain");
-                    break;
-                default:
-                    spriteSheet = AssetManager.GetSpriteSheet("items");
-                    break;
-            }
-
             rect = new RectangleShape(new Vector2f(ItemStakSize, ItemStakSize));
-            rect.Texture = spriteSheet.Texture;
-            rect.TextureRect = spriteSheet.GetTextureRect(infoItem.SpriteIndex);
+            rect.Texture = AssetManager.GetTexture(Item.SpriteName);
             rect.Origin = Size;
             rect.Position = Size / 2;
-
-            if(infoItem is ItemTile)
-            {
-                if ((infoItem as ItemTile).IsWall)
-                    rect.FillColor = new Color(175, 175, 175);
-            }
 
             _text = new Text(ItemCount.ToString(), AssetManager.GetFont("Arial"));
             _text.Position = rect.Position - new Vector2f(30, 20);

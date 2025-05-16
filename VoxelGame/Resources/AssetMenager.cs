@@ -20,6 +20,19 @@ namespace VoxelGame.Resources
         /// </summary>
         public static string BasePath { get; set; } = "Assets/";
 
+        public static void Load()
+        {
+            var files = Directory.GetFiles(BasePath, "*.*", SearchOption.AllDirectories);
+
+            foreach (var file in files)
+            {
+                string name = Path.GetFileNameWithoutExtension(file);
+
+                if (!_textures.ContainsKey(name))
+                    _textures.Add(name, new Texture(file));
+            }
+        }
+
         /// <summary>
         /// Получить текстуру по имени
         /// </summary>
@@ -32,17 +45,8 @@ namespace VoxelGame.Resources
             {
                 return _textures[name];
             }
-            else
-            {
-                if (!File.Exists(BasePath + "Textures/" + name + ".png"))
-                {
-                    throw new FileNotFoundException("Texture not found: " + BasePath + "Textures/" + name + ".png");
-                }
 
-                Texture texture = new Texture(BasePath + "Textures/" + name + ".png");
-                _textures.Add(name, texture);
-                return texture;
-            }
+            throw new Exception("File not found. " + name);
         }
 
         /// <summary>

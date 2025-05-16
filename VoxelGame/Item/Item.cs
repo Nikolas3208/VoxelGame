@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography.X509Certificates;
+﻿using SFML.Graphics;
+using System.Security.Cryptography.X509Certificates;
 
 namespace VoxelGame.Item
 {
@@ -8,10 +9,13 @@ namespace VoxelGame.Item
         Weapon,
         Armor,
         Tile,
+        Wall,
         Axe,
         Pickaxe,
-        Shovel,
-        Material
+        Hammer,
+        Sword,
+        Material,
+        All
     }
     public class Item
     {
@@ -73,6 +77,11 @@ namespace VoxelGame.Item
         public int SpriteIndex { get; set; } = 0;
 
         /// <summary>
+        /// Спрайт предмета
+        /// </summary>
+        public string SpriteName { get; set; }
+
+        /// <summary>
         /// Конструктор копирования
         /// </summary>
         /// <param name="infoItem"> Копируемый предмет </param>
@@ -99,30 +108,23 @@ namespace VoxelGame.Item
         /// <param name="damage"> Урон </param>
         /// <param name="spriteIndex"> Идентификатор спрайта на листе </param>
         /// <param name="maxCountInStack"> Максимальное количество в стаке </param>
-        public Item(ItemType type, string name, string description, float strength, float damage, int spriteIndex, int maxCountInStack = 64)
+        public Item(ItemType type, string name, string description, float strength, float damage, int maxCountInStack = 64)
         {
             Type = type;
             Name = name;
             Description = description;
             Strength = strength;
             Damage = damage;
-            SpriteIndex = spriteIndex;
             MaxCoutnInStack = maxCountInStack;
+            SpriteName = "Item_" + ItemList.ToString();
         }
 
-        /// <summary>
-        /// Конструктор предмета
-        /// </summary>
-        /// <param name="type"> Тип </param>
-        /// <param name="name"> Имя </param>
-        /// <param name="spriteIndex"> Идентефикатор спрайта на листе </param>
-        /// <param name="maxCountInStack"> Максимальное количество в стаке </param>
-        public Item(ItemType type, string name, int spriteIndex, int maxCountInStack = 64)
+        public Item(ItemType type, string name, int maxCountInStack = 64)
         {
             Type = type;
             Name = name;
-            SpriteIndex = spriteIndex;
             MaxCoutnInStack = maxCountInStack;
+            SpriteName = "Item_" + ItemList.ToString();
         }
 
         /// <summary>
@@ -175,6 +177,14 @@ namespace VoxelGame.Item
         {
             ItemList = itemList;
 
+            SpriteName = "Item_" + itemList.ToString();
+
+            return this;
+        }
+
+        public Item SetSpriteName(string spriteName)
+        {
+            SpriteName = spriteName;
             return this;
         }
 

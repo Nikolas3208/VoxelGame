@@ -1,4 +1,5 @@
-﻿using SFML.System;
+﻿using SFML.Graphics;
+using SFML.System;
 
 namespace VoxelGame.UI.Inventory
 {
@@ -6,6 +7,7 @@ namespace VoxelGame.UI.Inventory
     {
         public UIChestInventory(Vector2f size) : base(size)
         {
+            
         }
     }
 }

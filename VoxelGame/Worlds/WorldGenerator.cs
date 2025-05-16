@@ -1,4 +1,5 @@
 using SFML.System;
+using System;
 using VoxelGame.Meths;
 using VoxelGame.Worlds.Tile;
 
@@ -12,6 +13,7 @@ public static class WorldGenerator
         _perlin = seed != -1 ? new PerlinNoise(seed) : new PerlinNoise((int)DateTime.Now.Ticks);
 
         World world = new World(width, height, _perlin.Seed);
+        World.Random = _perlin.Random;
 
         for (int x = 0; x < width / Chunk.ChunkSize; x++)
         {
@@ -45,7 +47,9 @@ public static class WorldGenerator
         }
 
         Chunk chunk = new Chunk(world);
-        chunk.Position = new Vector2f(x, y) * InfoTile.TileSize;
+        chunk.X = x / Tile.Tile.TileSize;
+        chunk.Y = y / Tile.Tile.TileSize;
+        chunk.Position = new Vector2f(x, y) * Tile.Tile.TileSize;
         chunk.Id = x / Chunk.ChunkSize * (int)(world.ChunkCountX / Chunk.ChunkSize) + y / Chunk.ChunkSize;
 
         for (int cX = 0; cX < Chunk.ChunkSize; cX++)
@@ -68,11 +72,13 @@ public static class WorldGenerator
                     float noise = (perlin.Noise(x + cX, y + cY, 2, 0.1f, 1f, 0.5f) + 1f) / 2f;
                     blend = (blend + noise * 0.3f) / 1.26f;
 
+                    bool setWall = cY > heightMap[cX] - y + 1;
+
                     if (blend < 0.5f)
-                        chunk.SetTile(cX, cY, TileType.Ground);
+                        chunk.SetTile(cX, cY, TileType.Ground, setWall: setWall);
                     else
                     {
-                        chunk.SetTile(cX, cY, TileType.Stone);
+                        chunk.SetTile(cX, cY, TileType.Stone, setWall: setWall);
                     }
                 }
                 else
@@ -81,9 +87,9 @@ public static class WorldGenerator
                     var tile = chunk.GetTile(cX, cY);
 
                     if (tile != null)
-                        chunk.SetTile(cX, cY, tile.Type, isWall: true);
+                        chunk.SetWall(cX, cY, Tiles.TileTypeToWallType(tile.Type));
                     else
-                        chunk.SetTile(cX, cY, TileType.Stone, isWall: true);
+                        chunk.SetWall(cX, cY, WallType.StoneWall);
                 }
             }
         }
@@ -121,7 +127,7 @@ public static class WorldGenerator
                     // Шанс на дерево
                     if (_perlin.Random.NextDouble() < 0.09) // 9%
                     {
-                        TileType treeType = _perlin.Random.Next(0, 2) == 1 ? TileType.Oak : TileType.Birch;
+                        TileType treeType = _perlin.Random.Next(0, 2) == 1 ? TileType.Oak : TileType.Oak;
 
                         int treeHeight = _perlin.Random.Next(6, 12);
 
@@ -135,32 +141,11 @@ public static class WorldGenerator
                         }
 
                         // Ставим листву
-                        int top = y - treeHeight;
-                        for (int dx = -2; dx <= 2; dx++)
+                        int top = y - treeHeight - 1;
+                        if (!chunk.SetTile(x, top, TileType.Leaves))
                         {
-                            for (int dy = -2; dy <= 2; dy++)
-                            {
-                                int leafX = x + dx;
-                                int leafY = top + dy;
-
-                                float dist = MathF.Abs(dx) + MathF.Abs(dy); // крест
-                                if (dist <= 2)
-                                {
-                                    // Только если нет другого блока
-                                    if (chunk.GetTile(leafX, leafY) == null)
-                                    {
-                                        if (!chunk.SetTile(leafX, leafY, TileType.Leaves))
-                                        {
-                                            if (world.GetChunkByWorldPosition(chunk.Position - new Vector2f(0, 1))?.GetTile(leafX, Chunk.ChunkSize + leafY) == null)
-                                                world.GetChunkByWorldPosition(chunk.Position - new Vector2f(0, 1))?.SetTile(leafX, Chunk.ChunkSize + leafY, TileType.Leaves);
-                                        }
-                                    }
-                                    else
-                                    {
-
-                                    }
-                                }
-                            }
+                            if (world.GetChunk(chunk.X, chunk.Y - 1)?.GetTile(x, Chunk.ChunkSize + top) == null)
+                                world.GetChunk(chunk.X, chunk.Y - 1)?.SetTile(x, Chunk.ChunkSize + top, TileType.Leaves);
                         }
 
                         // Переход к следующему дереву (не ставим рядом)

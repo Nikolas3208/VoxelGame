@@ -1,4 +1,5 @@
-﻿using VoxelGame.Worlds.Tile;
+﻿using SFML.Graphics;
+using VoxelGame.Worlds.Tile;
 
 namespace VoxelGame.Item
 {
@@ -7,7 +8,7 @@ namespace VoxelGame.Item
         /// <summary>
         /// Это стена?
         /// </summary>
-        public bool IsWall = false;
+        public WallType WallType { get; set; } = WallType.None;
 
         /// <summary>
         /// Тип плитки
@@ -20,17 +21,26 @@ namespace VoxelGame.Item
         /// <param name="type"> Тип плитки </param>
         /// <param name="spriteIndex"> Идентефикатор спрайта на листе </param>
         /// <param name="maxCountInStack"> Максимальное количество в стаке </param>
-        /// <param name="isWall"> Это стена? </param>
-        public ItemTile(TileType type, int spriteIndex, int maxCountInStack = 64, bool isWall = false) : base(ItemType.Tile, type.ToString(), spriteIndex, maxCountInStack)
+        public ItemTile(TileType type, int maxCountInStack = 64) : base(ItemType.Tile, type.ToString(), maxCountInStack)
         {
             TileType = type;
-            IsWall = isWall;
+        }
+
+        /// <summary>
+        /// Предмет стенка
+        /// </summary>
+        /// <param name="type"> Тип стенки </param>
+        /// <param name="spriteIndex">  </param>
+        /// <param name="maxCountInStack"> Максимальное количество в стаке </param>
+        public ItemTile(WallType type, int maxCountInStack = 64) : base(ItemType.Wall, type.ToString(), maxCountInStack)
+        {
+            WallType = type;
         }
 
         public ItemTile(ItemTile tile) : base(tile)
         {
-            IsWall = tile.IsWall;
             TileType = tile.TileType;
+            WallType = tile.WallType;
         }
     }
 }

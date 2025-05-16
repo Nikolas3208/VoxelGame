@@ -15,14 +15,15 @@ namespace VoxelGame.Worlds.Tile
         {
             _chestInventory = new UIChestInventory(new Vector2f(UIInventoryCell.CellSize * 10, UIInventoryCell.CellSize * 6));
             _chestInventory.Position = Position;
+            _chestInventory.SetSelectedCell(null);
+            _chestInventory.Craft = null;
         }
 
         public void OpenChest()
         {
             IsOpen = true;
 
-            _chestInventory.Position = Game.GetCameraPosition();
-            _chestInventory.Origin = new Vector2f(_chestInventory.Size.X / 2 - UIInventoryCell.CellSize - 8, 0);
+            _chestInventory.Position = Game.GetCameraPosition() - new Vector2f(_chestInventory.Size.X / 2 - UIInventoryCell.CellSize - 8, 0);
             _chestInventory.ShowInventory();
             UIManager.AddWindow(_chestInventory);
         }

@@ -53,6 +53,8 @@ namespace VoxelGame.Worlds
         /// </summary>
         public float BaseHeight { get; set; } = 50;
 
+        public static Random Random { get; set; }
+
         /// <summary>
         /// Мир
         /// </summary>
@@ -72,7 +74,7 @@ namespace VoxelGame.Worlds
             _entities = new List<Entity>();
             _dropItems = new List<DropItem>();
 
-            _entities.Add(new Player(this, new AABB(16, 32)));
+            _entities.Add(new Player(this, new AABB(16, 32)) { Position = new Vector2f(height * Tile.Tile.TileSize / 2, 0) });
         }
 
         /// <summary>
@@ -96,8 +98,6 @@ namespace VoxelGame.Worlds
 
             chunk.GenerateColliders();
             chunk.IsComplate = true;
-            chunk.X = x;
-            chunk.Y = y;
             _chanks[index] = chunk;
         }
 
@@ -131,8 +131,8 @@ namespace VoxelGame.Worlds
         /// <returns> Чанк, null если координаты вышли за границы локальных координат или чанк был null </returns>
         public Chunk? GetChunkByWorldPosition(Vector2f position)
         {
-            int x = (int)(position.X / Chunk.ChunkSize / InfoTile.TileSize);
-            int y = (int)(position.Y / Chunk.ChunkSize / InfoTile.TileSize);
+            int x = (int)(position.X / Chunk.ChunkSize / Tile.Tile.TileSize);
+            int y = (int)(position.Y / Chunk.ChunkSize / Tile.Tile.TileSize);
             return GetChunk(x, y);
         }
 
@@ -149,9 +149,34 @@ namespace VoxelGame.Worlds
             timeOfDay += timeSpeed * deltaTime;
             if (timeOfDay > 1f) timeOfDay -= 1f;
 
-            var chunks = Task.Run(() => ChunkUpdate(deltaTime));
+            drawbleChunk = new List<Chunk>();
+            var tilePos = (Game.GetCameraPosition().X / Chunk.ChunkSize / Tile.Tile.TileSize, Game.GetCameraPosition().Y / Chunk.ChunkSize / Tile.Tile.TileSize);
+            var tilesPerScreen = (MathF.Ceiling(Game.GetWindowSize().X / (Chunk.ChunkSize * Tile.Tile.TileSize)), MathF.Ceiling(Game.GetWindowSize().Y / (Chunk.ChunkSize * Tile.Tile.TileSize)));
+            var LeftMostTilesPos = (int)(tilePos.Item1 - tilesPerScreen.Item1);
+            var TopMostTilesPos = (int)(tilePos.Item2 - tilesPerScreen.Item2);
 
-            drawbleChunk = chunks.Result;
+
+            for (int x = LeftMostTilesPos + 4; x < LeftMostTilesPos + tilesPerScreen.Item1 + 3; x++)
+            {
+                for (int y = TopMostTilesPos + 2; y < TopMostTilesPos + tilesPerScreen.Item2 + 2; y++)
+                {
+                    if (x >= 0 && x < ChunkCountX && y >= 0 && y < ChumkCountY)
+                    {
+                        var chunk = GetChunk(x, y);
+                        if (chunk != null)
+                        {
+                            Light.LightingChunk(chunk, drawbleChunk, new List<Vector2f>());
+                            chunk.Update(deltaTime);
+                            drawbleChunk.Add(chunk);
+                        }
+                    }
+                }
+            }
+
+            foreach (var chunk in drawbleChunk)
+            {
+                Light.LightPoint(chunk, drawbleChunk, new List<Vector2f>());
+            }
 
             lock (lockes)
             {
@@ -164,8 +189,8 @@ namespace VoxelGame.Worlds
                 }
             }
 
-            Task.Run(() =>
-            {
+            //Task.Run(() =>
+            //{
                 try
                 {
                     lock (lockes)
@@ -177,43 +202,9 @@ namespace VoxelGame.Worlds
                 {
                     Console.WriteLine("Ошибка в физическом мире: " + ex.Message);
                 }
-            });
+            //});
 
             Game.SetCameraPosition(_entities[0].Position);
-        }
-
-        /// <summary>
-        /// Поиск и обновление видимых чанков
-        /// </summary>
-        /// <param name="deltaTime"></param>
-        /// <returns></returns>
-        public Task<List<Chunk>> ChunkUpdate(float deltaTime)
-        {
-            var drawbleChunk = new List<Chunk>();
-            var tilePos = (Game.GetCameraPosition().X / Chunk.ChunkSize / InfoTile.TileSize, Game.GetCameraPosition().Y / Chunk.ChunkSize / InfoTile.TileSize);
-            var tilesPerScreen = (MathF.Ceiling(Game.GetWindowSize().X / (Chunk.ChunkSize * InfoTile.TileSize)), MathF.Ceiling(Game.GetWindowSize().Y / (Chunk.ChunkSize * InfoTile.TileSize)));
-            var LeftMostTilesPos = (int)(tilePos.Item1 - tilesPerScreen.Item1);
-            var TopMostTilesPos = (int)(tilePos.Item2 - tilesPerScreen.Item2);
-
-
-            for (int x = LeftMostTilesPos + 4; x < LeftMostTilesPos + tilesPerScreen.Item1 + 3; x++)
-            {
-                for (int y = TopMostTilesPos - 1; y < TopMostTilesPos + tilesPerScreen.Item2 + 2; y++)
-                {
-                    if (x >= 0 && x < ChunkCountX && y >= 0 && y < ChumkCountY)
-                    {
-                        var chunk = GetChunk(x, y);
-                        if (chunk != null)
-                        {
-                            Light.LightingChunk(chunk, new List<Vector2f>());
-                            chunk.Update(deltaTime);
-                            drawbleChunk.Add(chunk);
-                        }
-                    }
-                }
-            }
-
-            return Task.FromResult(drawbleChunk);
         }
 
         /// <summary>
@@ -231,8 +222,15 @@ namespace VoxelGame.Worlds
             {
                 if (drawbleChunk[i] != null)
                 {
+                    drawbleChunk[i].DrawWall(target, states);
+                }
+            }
 
-                    drawbleChunk[i].Draw(target, states);
+            for (int i = 0; i < drawbleChunk.Count; i++)
+            {
+                if (drawbleChunk[i] != null)
+                {
+                    drawbleChunk[i].DrawTile(target, states);
                 }
             }
 
@@ -266,16 +264,21 @@ namespace VoxelGame.Worlds
         /// </summary>
         /// <param name="tile"> Плитка </param>
         /// <param name="position"> Позиция </param>
-        public void DropItem(InfoTile tile, Vector2f position)
+        public void DropItem(Tile.Tile tile, Vector2f position)
         {
             if (Enum.GetNames<ItemList>().Contains(tile.Type.ToString()))
             {
-                DropItem(Items.GetItem((ItemList)Enum.Parse(typeof(ItemList), tile.Type.ToString())), position);
+                DropItem(Items.GetItem(tile.DropItem), position);
             }
             else
             {
                 DropItem(Items.GetItem(ItemList.None), position);
             }
+        }
+
+        public void DropItem(ItemList item, Vector2f position)
+        {
+            DropItem(Items.GetItem(item), position);
         }
 
         /// <summary>

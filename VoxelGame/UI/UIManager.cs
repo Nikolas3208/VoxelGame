@@ -33,13 +33,12 @@ namespace VoxelGame.UI
         public static void Update(float deltaTime)
         {
             Drop = null;
+            MousePosition = Game.GetMousePositionByWorld();
 
-            foreach(var window in _uIWindows)
+            foreach (var window in _uIWindows)
             {
                 window.UpdateOver(deltaTime);
             }
-
-            MousePosition = Game.GetMousePositionByWorld();
 
             if (Drag != null)
             {

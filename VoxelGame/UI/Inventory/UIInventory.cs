@@ -3,24 +3,29 @@ using SFML.System;
 using SFML.Window;
 using System.Security.Cryptography.X509Certificates;
 using VoxelGame.Item;
+using VoxelGame.Physics;
+using VoxelGame.Resources;
 
 namespace VoxelGame.UI.Inventory
 {
     public class UIInventory : UIWindow
     {
         private UIInventoryCell? _selectedCell;
-        private UICraft _craft;
 
         protected int CellCountX { get; set; } = 10;
         protected int CellCountY { get; set; } = 6;
+
+        public Player Player { get; set; }
+        public UICraft Craft {  get; set; }
 
         public bool IsFullInventoryVisible { get; private set; } = false;
 
         public UIInventory(Vector2f size) : base(size, "Player Inventory")
         {
-            _craft = new UICraft(this);
+            Craft = new UICraft(this);
 
             TitleBarIsVisible = false;
+            IsRectVisible = false;
 
             for (int i = 0; i < CellCountX; i++)
             {
@@ -54,7 +59,9 @@ namespace VoxelGame.UI.Inventory
             if (_selectedCell != null)
                 _selectedCell.IsSelected = false;
 
-            inventoryCell.IsSelected = true;
+            if (inventoryCell != null)
+                inventoryCell.IsSelected = true;
+
             _selectedCell = inventoryCell;
         }
 
@@ -96,7 +103,7 @@ namespace VoxelGame.UI.Inventory
             return _selectedCell.GetItem();
         }
 
-        public List<Craft> GetAvailableCrafts(CraftTool craftTool)
+        public List<Craft> GetAvailableCrafts()
         {
             var crafts = new List<Craft>();
             bool breakCraft = false;
@@ -121,7 +128,7 @@ namespace VoxelGame.UI.Inventory
                     {
                         var itemC = craft.Items[i2];
 
-                        if (GetItemCount(itemC.Item) < itemC.Count)
+                        if (GetItemCount(itemC.Item) < itemC.Count || !CanTool(Player.CraftTools, craft.Tool))
                         {
                             break;
                         }
@@ -135,6 +142,16 @@ namespace VoxelGame.UI.Inventory
             }
 
             return crafts;
+        }
+
+        bool CanTool(List<CraftTool> a, CraftTool b)
+        {
+            foreach (var tool in a)
+            {
+                if((tool & b) != 0 && (b & tool) != 0) return true;
+            }
+
+            return false;
         }
 
         public int GetItemCount(ItemList item)
@@ -233,12 +250,13 @@ namespace VoxelGame.UI.Inventory
         {
             base.Update(deltaTime);
 
-            _craft.UpdateOver(deltaTime);
+            if (Craft != null)
+                Craft.UpdateOver(deltaTime);
 
-            if (IsFullInventoryVisible)
+            if (IsFullInventoryVisible && Craft != null)
             {
-                _craft.Position = new Vector2f(-Game.GetWindowSize().X / 2 * Game.GetZoom() + 140, -Game.GetWindowSize().Y / 2 * Game.GetZoom() - 80)  + Position;
-                _craft.Update(deltaTime);
+                Craft.Position = new Vector2f(-Game.GetWindowSize().X / 2 * Game.GetZoom() + 140, -Game.GetWindowSize().Y / 2 * Game.GetZoom() - 80)  + Position;
+                Craft.Update(deltaTime);
             }
         }
 
@@ -260,8 +278,8 @@ namespace VoxelGame.UI.Inventory
         {
             base.Draw(target, states);
 
-            if (IsFullInventoryVisible)
-                _craft.Draw(target, states);
+            if (IsFullInventoryVisible && Craft != null)
+                Craft.Draw(target, states);
         }
     }
 }

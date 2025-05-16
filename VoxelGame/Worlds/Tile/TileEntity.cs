@@ -24,7 +24,7 @@ namespace VoxelGame.Worlds.Tile
         {
             Type = type;
 
-            rect = new RectangleShape(new Vector2f(InfoTile.TileSize, InfoTile.TileSize));
+            rect = new RectangleShape(new Vector2f(Tile.TileSize, Tile.TileSize));
             rect.Texture = AssetManager.GetSpriteSheet("terrain").Texture;
             rect.TextureRect = AssetManager.GetSpriteSheet("terrain").GetTextureRect(27);
             //rect.Origin = -rect.Size / 2;

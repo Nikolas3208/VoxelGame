@@ -14,6 +14,8 @@ namespace VoxelGame.UI.Inventory
 
         public UICraft(UIInventory inventory)
         {
+            IsRectVisible = false;
+
             _inventory = inventory;
 
             rect = new RectangleShape(new Vector2f(5, 8) * UIInventoryCell.CellSize);
@@ -33,7 +35,7 @@ namespace VoxelGame.UI.Inventory
 
             if (_inventory != null)
             {
-                crafts = _inventory.GetAvailableCrafts(CraftTool.None);
+                crafts = _inventory.GetAvailableCrafts();
             }
             if (!Mouse.IsButtonPressed(Mouse.Button.Left))
             {

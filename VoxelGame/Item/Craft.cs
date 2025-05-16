@@ -2,10 +2,11 @@
 {
     public enum CraftTool
     {
-        None,
-        Workbench,
-        Stove,
-        Anvil
+        None = 1,
+        Workbench = 2 << 1,
+        Stove = 3 << 3,
+        Anvil = 4 << 4,
+        All = None | Workbench | Stove | Anvil
     }
 
     public class Craft
@@ -25,7 +26,7 @@
         /// <summary>
         /// Инструмент для крафта ( печка, верстак )
         /// </summary>
-        public CraftTool Tool { get; } = CraftTool.None;
+        public CraftTool Tool { get; } = CraftTool.All;
 
         /// <summary>
         /// Конструктор

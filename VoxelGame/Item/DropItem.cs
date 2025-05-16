@@ -32,20 +32,7 @@ namespace VoxelGame.Item
             Layer = CollisionLayer.Item;
             CollidesWith = CollisionLayer.Ground;
 
-            SpriteSheet ss;
-
-            switch (item.Type)
-            {
-                case ItemType.Tile:
-                    ss = AssetManager.GetSpriteSheet("terrain");
-                    break;
-                default:
-                    ss = AssetManager.GetSpriteSheet("items");
-                    break;
-            }
-
-            rect.Texture = ss.Texture;
-            rect.TextureRect = ss.GetTextureRect(item.SpriteIndex);
+            rect.Texture = AssetManager.GetTexture(item.SpriteName);
         }
 
         float animAngle = 0f;

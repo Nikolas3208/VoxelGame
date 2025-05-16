@@ -15,11 +15,16 @@ public class InfoTile
     /// </summary>
     public int Id;
 
+    public Vector2f Position {  get; set; }
+
     /// <summary>
     /// Тип плитки
     /// </summary>
     public TileType Type { get; set; } = TileType.Ground;
 
+    /// <summary>
+    /// Инструмент для быстрого добывания плитки
+    /// </summary>
     public ItemType SpecificTool { get; set; } = ItemType.None;
 
     /// <summary>

@@ -7,6 +7,7 @@ using VoxelGame.Physics;
 using VoxelGame.UI;
 using VoxelGame.UI.Inventory;
 using VoxelGame.Worlds;
+using VoxelGame.Worlds.Tile;
 
 namespace VoxelGame
 {
@@ -18,21 +19,50 @@ namespace VoxelGame
         private UIInventory _inventory;
         private Item.Item? _selectedItem;
 
+        private float breakingSpeed = 1f;
+
+        public List<CraftTool> CraftTools { get; set; }
+
         public Player(World world, AABB aabb) : base(world, aabb)
         {
             rect.FillColor = Color.Red;
+
             _inventory = new UIInventory(new Vector2f(UIInventoryCell.CellSize * 10, UIInventoryCell.CellSize));
+            _inventory.Player = this;
 
             UIManager.AddWindow(_inventory);
 
-            _inventory.AddItem(Items.GetItem(ItemList.Torch), 64);
+            _inventory.AddItem(Items.GetItem(ItemList.CopperPickaxe), 1);
+            _inventory.AddItem(Items.GetItem(ItemList.CopperAxe), 1);
+
+            CraftTools = new List<CraftTool>();
         }
 
         public override void Update(float deltaTime)
         {
-            if (!_inventory.IsFullInventoryVisible)
-                MouseUpdate();
-            _inventory.Position = new Vector2f(-1920 / 4, Game.GetWindowSize().Y - 250) / 4 + Position;
+            MouseUpdate();
+            _inventory.Position = new Vector2f(-Game.GetWindowSize().X / 2 * Game.GetZoom(), Game.GetWindowSize().Y - 250) / 4 + Position;
+
+            var chunk = world.GetChunkByWorldPosition(Position);
+
+            CraftTools.Clear();
+            CraftTools.Add(CraftTool.None);
+
+            if (chunk != null)
+            {
+                for (int i = 0; i < Enum.GetNames<CraftTool>().Length - 1; i++)
+                {
+                    var tileTypeStr = (Enum.GetNames<CraftTool>()[i]).ToString();
+
+                    var tileType = Enum.Parse<TileType>(tileTypeStr);
+                    var tile = chunk.GetTileByType(tileType);
+
+                    if (tile != null && MathHelper.Distance(Position, tile.GlobalPosition) < 3 * 16)
+                    {
+                        CraftTools.Add(Enum.Parse<CraftTool>(tileTypeStr));
+                    }
+                }
+            }
 
             for (int i = 0; i < 9; i++)
             {
@@ -42,25 +72,24 @@ namespace VoxelGame
                 }
             }
 
-            if(Keyboard.IsKeyPressed(Keyboard.Key.Num0))
+            if (Keyboard.IsKeyPressed(Keyboard.Key.Num0))
                 _inventory.SetSelectedCell(9);
 
-            if(Keyboard.IsKeyPressed(Keyboard.Key.E) && !_inventoryOpened)
+            if (Keyboard.IsKeyPressed(Keyboard.Key.E) && !_inventoryOpened)
             {
                 if (_inventory.IsFullInventoryVisible)
                     _inventory.HideInventory();
-                else 
+                else
                     _inventory.ShowInventory();
 
                 _inventoryOpened = true;
             }
-            else if(!Keyboard.IsKeyPressed(Keyboard.Key.E))
+            else if (!Keyboard.IsKeyPressed(Keyboard.Key.E))
             {
                 _inventoryOpened = false;
             }
 
             _selectedItem = _inventory.GetItemWithSelectedCell();
-            if (!_inventory.IsFullInventoryVisible)
             {
                 bool isRightMove = Keyboard.IsKeyPressed(Keyboard.Key.D);
                 bool isLeftMove = Keyboard.IsKeyPressed(Keyboard.Key.A);
@@ -105,64 +134,62 @@ namespace VoxelGame
             }
         }
 
-        float breakingSpeed = 1f;
 
         private void MouseUpdate()
         {
-            Vector2i mousePos = (Vector2i)Game.GetMousePositionByWorld();
+            Vector2f mousePos = Game.GetMousePositionByWorld();
 
-            var chunk = world.GetChunkByWorldPosition((Vector2f)mousePos);
+            var chunk = world.GetChunkByWorldPosition(mousePos);
 
-            bool mouseHoveredPlayer = !new FloatRect(Position, rect.Size).Contains(mousePos.X, mousePos.Y);
-            bool distanceToTile = MathHelper.DistanceSquared((Vector2f)mousePos, Position) < 25000;
+            bool mouseHoveredPlayer = new FloatRect(Position, rect.Size).Contains(mousePos.X, mousePos.Y);
+            bool distanceToTile = MathHelper.DistanceSquared(mousePos, Position) < 25000;
             bool mouseLeftClick = Mouse.IsButtonPressed(Mouse.Button.Left);
             bool mouseRightClick = Mouse.IsButtonPressed(Mouse.Button.Right);
-            bool itemIsTool = _selectedItem != null && (_selectedItem.Type == ItemType.Axe || _selectedItem.Type == ItemType.Shovel || _selectedItem.Type == ItemType.Pickaxe);
+            bool itemIsTool = _selectedItem != null && (_selectedItem.Type == ItemType.Axe || _selectedItem.Type == ItemType.Hammer || _selectedItem.Type == ItemType.Pickaxe);
             bool itemIsPickaxe = _selectedItem != null && _selectedItem.Type == ItemType.Pickaxe;
             bool itemIsAxe = _selectedItem != null && _selectedItem.Type == ItemType.Axe;
-            bool itemIsShovel = _selectedItem != null && _selectedItem.Type == ItemType.Shovel;
+
+            breakingSpeed = _selectedItem != null && _selectedItem is ItemTool ? (_selectedItem as ItemTool)!.BreakingSpeed : 1f;
 
             if (chunk != null)
             {
-                if (mouseHoveredPlayer)
+                if (!mouseHoveredPlayer)
                 {
                     if (distanceToTile)
                     {
-                        if (_selectedItem != null)
-                            breakingSpeed = _selectedItem.Speed;
-                        else
-                            breakingSpeed = 2f;
+                        var tile = chunk.GetTileByWorldPosition(mousePos);
+                        var wall = chunk.GetWallByWorldPosition(mousePos);
 
-                        var tile = chunk.GetTileByWorldPosition((Vector2f)mousePos);
-                        if (tile != null && mouseLeftClick && itemIsTool)
+                        if(tile != null)
                         {
-                            chunk.BreakingTailByWorldPosition((Vector2f)mousePos, 0.01f * breakingSpeed, _selectedItem!.Type);
+                            DebugRender.AddText(mousePos, $"TileType: {tile.Type} \n" +
+                                                          $"Tile lockalPosition: {tile.LocalPosition}");
                         }
-                        else if (tile != null && mouseLeftClick && _selectedItem != null && _selectedItem.Type == ItemType.Tile)
+
+                        if (mouseRightClick)
                         {
-                            chunk.BreakingTailByWorldPosition((Vector2f)mousePos, 0.01f, ItemType.None);
-                        }
-                        else if (tile != null && mouseLeftClick && _selectedItem == null)
-                        {
-                            chunk.BreakingTailByWorldPosition((Vector2f)mousePos, 0.01f, ItemType.None);
-                        }
-                        else if (tile == null && mouseRightClick && _selectedItem != null && _selectedItem.Type == ItemType.Tile)
-                        {
-                            //if (_selectedItem is ItemTile)
+                            if (tile == null && _selectedItem != null && _selectedItem.Type == ItemType.Tile)
                             {
-                                var itemTile = (ItemTile)_selectedItem;// as ItemTile;
-
-                                if (chunk.SetTileByWorldPosition((Vector2f)mousePos, itemTile!.TileType, true, itemTile!.IsWall))
+                                if (chunk.SetTileByWorldPosition(mousePos, Tiles.ItemListToTileType(_selectedItem.ItemList)))
+                                {
                                     _inventory.GetSelectedCell()!.ItemStack!.ItemCount -= 1;
+                                }
+                            }
+                            else if(wall == null && _selectedItem != null && _selectedItem.Type == ItemType.Wall)
+                            {
+                                if (chunk.SetWallByWorldPosition(mousePos, Tiles.ItemListToWallType(_selectedItem.ItemList)))
+                                {
+                                    _inventory.GetSelectedCell()!.ItemStack!.ItemCount -= 1;
+                                }
                             }
                         }
-                        else if (mouseRightClick)
+                        else if(mouseLeftClick)
                         {
-                            var tileEntity = chunk.GetTileEntityByWorldPosition((Vector2f)mousePos);
-                            if (tileEntity != null)
+                            if(tile != null && itemIsTool)
                             {
-                                _inventory.ShowInventory();
-                                tileEntity.Use();
+                                var tool = _selectedItem as ItemTool;
+
+                                chunk.BreakingTileByWorldPosition(mousePos, tool!.Type, tool.Power, tool.BreakingSpeed * 0.05f);
                             }
                         }
                     }

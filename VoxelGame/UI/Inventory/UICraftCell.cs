@@ -15,7 +15,7 @@ namespace VoxelGame.UI.Inventory
         public UICraftCell()
         {
             rect = new RectangleShape(new Vector2f(UIInventoryCell.CellSize, UIInventoryCell.CellSize));
-            rect.Texture = AssetManager.GetTexture("ui/inventory_cell");
+            rect.Texture = AssetManager.GetTexture("Inventory_Back");
         }
 
         public void SetItem(Item.Item item)
@@ -27,27 +27,9 @@ namespace VoxelGame.UI.Inventory
                 _itemSprite = null;
                 return;
             }
-            SpriteSheet spriteSheet;
 
-            switch (item.Type)
-            {
-                case ItemType.Tile:
-                    spriteSheet = AssetManager.GetSpriteSheet("terrain");
-                    break;
-                default:
-                    spriteSheet = AssetManager.GetSpriteSheet("items");
-                    break;
-            }
-
-            _itemSprite = new Sprite(spriteSheet.Texture);
-            _itemSprite.TextureRect = spriteSheet.GetTextureRect(item.SpriteIndex);
+            _itemSprite = new Sprite(AssetManager.GetTexture(Item.SpriteName));
             _itemSprite.Origin = -new Vector2f(8, 8);
-
-            if (item is ItemTile)
-            {
-                if ((item as ItemTile).IsWall)
-                    _itemSprite.Color = new Color(175, 175, 175);
-            }
         }
 
         public void SetCraft(Craft craft)

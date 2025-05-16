@@ -17,6 +17,7 @@ namespace VoxelGame.UI
         public UIBase? OldPerent { get; set; }
 
         public bool IsVisible { get; set; } = true;
+        public bool IsRectVisible { get; set; } = true;
         public bool IsUpdate { get; set; } = true;
 
         public bool CanDrag { get; set; } = false;
@@ -34,11 +35,14 @@ namespace VoxelGame.UI
 
         public new Vector2f Origin
         {
-            get => rect.Origin;
+            get
+            {
+                return rect.Origin;
+            }
             set
             {
                 rect.Origin = value;
-                base.Origin = value;
+                //base.Origin = value;
             }
         }
 
@@ -149,7 +153,8 @@ namespace VoxelGame.UI
 
             states.Transform *= Transform;
 
-            target.Draw(rect, states);
+            if (IsRectVisible)
+                target.Draw(rect, states);
 
             foreach (var child in Childs)
             {

@@ -1,5 +1,6 @@
 ﻿using SFML.Graphics;
 using SFML.System;
+using System;
 using VoxelGame.Item;
 using VoxelGame.Physics;
 using VoxelGame.Resources;
@@ -20,9 +21,14 @@ namespace VoxelGame.Worlds
         private World _world;
 
         /// <summary>
-        /// Массив плиток
+        /// Список плиток
         /// </summary>
-        private InfoTile[] _tiles;
+        private Tile.Tile[] _tiles;
+
+        /// <summary>
+        /// Список плиток стен
+        /// </summary>
+        private WallTile[] _tilesWall;
 
         /// <summary>
         /// Список плиток сушностей
@@ -35,10 +41,18 @@ namespace VoxelGame.Worlds
         private List<AABB> _colliders;
 
         /// <summary>
-        /// Сетка чанка
+        /// Сетка плиток чанка
         /// </summary>
-        private ChunkMesh _chunkMesh { get; }
+        private Dictionary<TileType, ChunkMesh> _chunkMeshs { get; }
 
+        /// <summary>
+        /// Сетка стен чанка
+        /// </summary>
+        private Dictionary<WallType, ChunkMesh> _chunkMeshsWall { get; }
+
+        /// <summary>
+        /// Локальная позиция чанка
+        /// </summary>
         public int X, Y;
 
         /// <summary>
@@ -52,6 +66,16 @@ namespace VoxelGame.Worlds
         public bool IsComplate { get; set; }
 
         /// <summary>
+        /// Цвет освещения плитки
+        /// </summary>
+        public byte[,] LightColorTile { get; set; } = new byte[ChunkSize, ChunkSize];
+
+        /// <summary>
+        /// Цвет освещения стенки
+        /// </summary>
+        public byte[,] LightColorWall { get; set; } = new byte[ChunkSize, ChunkSize];
+
+        /// <summary>
         /// Чанк
         /// </summary>
         /// <param name="world"> Мир (родитель) </param>
@@ -59,109 +83,32 @@ namespace VoxelGame.Worlds
         {
             _world = world;
 
-            _tiles = new InfoTile[ChunkSize * ChunkSize];
+            _tiles = new Tile.Tile[ChunkSize * ChunkSize];
+            _tilesWall = new WallTile[ChunkSize * ChunkSize];
+
+            LightColorTile = new byte[ChunkSize, ChunkSize];
+            LightColorWall = new byte[ChunkSize, ChunkSize];
+
             _tilesEntiy = new List<TileEntity>();
 
             _colliders = new List<AABB>(ChunkSize * ChunkSize);
-            _chunkMesh = new ChunkMesh(this);
+            _chunkMeshs = new Dictionary<TileType, ChunkMesh>();
+            _chunkMeshsWall = new Dictionary<WallType, ChunkMesh>();
         }
 
         /// <summary>
-        /// Установить плитку в локальных координатах
+        /// В чанке?
         /// </summary>
-        /// <param name="x"> Позиция по Х </param>
-        /// <param name="y"> Позиия по У </param>
-        /// <param name="tile"> Поитка </param>
-        /// <returns> True если плитка установлена </returns>
-        public bool SetTile(int x, int y, InfoTile? tile, bool isPlayer = false, bool isWall = false)
+        /// <param name="x"> Х координата </param>
+        /// <param name="y"> У координата </param>
+        /// <returns> True если не выходит за размеры чанка или больше -1 </returns>
+        public bool InBounds(int x, int y)
         {
-            // Проверяем на валидность координаты
-            //if (IsComplate)
-            {
-                if (y < 0)
-                {
-                    var upChunk = _world.GetChunk(X, Y - 1);
-                    return upChunk != null ? upChunk.SetTile(x, ChunkSize + y, tile, isPlayer, isWall) : false;
-                }
-                else if (y >= ChunkSize)
-                {
-                    var downChunk = _world.GetChunk(X, Y + 1);
-                    return downChunk != null ? downChunk.SetTile(x, y - ChunkSize, tile, isPlayer, isWall) : false;
-                }
-                else if (x < 0)
-                {
-                    var leftChunk = _world.GetChunk(X - 1, Y);
-                    return leftChunk != null ? leftChunk.SetTile(ChunkSize + x, y, tile, isPlayer, isWall) : false;
-                }
-                else if (x >= ChunkSize)
-                {
-                    var rightChunk = _world.GetChunk(X + 1, Y);
-                    return rightChunk != null ? rightChunk.SetTile(x - ChunkSize, y, tile, isPlayer, isWall) : false;
-                }
-            }
-            //else
-            {
-                //if(x < 0 || y < 0 || x >= ChunkSize || y >= ChunkSize)
-                   // return false;
-            }
-
-            // Находим индекс плитки в массиве
-            int index = x * ChunkSize + y;
-
-            // Если плитка не null, то устанавливаем ей индекс
-            if (tile != null)
-            {
-                tile!.Id = index;
-                tile!.IsWall = isWall;
-                tile!.Chunk = this;
-
-                if (isWall)
-                    tile.IsCollide = false;
-            }
-            else if (_tiles[index] != null && IsComplate)
-            {
-                _world.DropItem(_tiles[index],
-                    new Vector2f(x, y) * InfoTile.TileSize + Position + new Vector2f(InfoTile.TileSize, InfoTile.TileSize) / 2);
-            }
-
-            if (!IsComplate || !isPlayer)
-            {
-                // Устанавливаем плитку в массив
-                _tiles[index] = tile!;
-
-                // Устанавливаем плитку в сетку чанка
-                _chunkMesh.SetTileToMesh(x, y, tile!, Color.Black);
-
-            }
-            else if (isPlayer && IsComplate)
-            {
-                var upTile = GetTile(x, y + 1);
-                var downTile = GetTile(x, y - 1);
-                var leftTile = GetTile(x - 1, y);
-                var rightTile = GetTile(x + 1, y);
-
-                if (upTile != null || downTile != null || leftTile != null || rightTile != null)
-                {
-                    // Устанавливаем плитку в массив
-                    _tiles[index] = tile!;
-
-                    // Устанавливаем плитку в сетку чанка
-                    _chunkMesh.SetTileToMesh(x, y, tile!, Color.Black);
-
-                }
-                else
-                    return false;
-            }
-
-            if(IsComplate)
-            {
-                if (!isWall)
-                    GenerateColliders();
-            }
-
-            return true;
+            return x >= 0 && x < ChunkSize && y >= 0 && y < ChunkSize;
         }
 
+        ///----------------------------Плитки---------------------------///
+        
         /// <summary>
         /// Установить плитку в локальных координатах, по типу плитки
         /// </summary>
@@ -169,26 +116,77 @@ namespace VoxelGame.Worlds
         /// <param name="y"> Позиция по У </param>
         /// <param name="type"> Тип плитки </param>
         /// <returns> True если плитка установлена </returns>
-        public bool SetTile(int x, int y, TileType type, bool isPlayer = false, bool isWall = false)
+        public bool SetTile(int x, int y, TileType type, bool isPlayer = false, bool setWall = false)
         {
-            return SetTile(x, y, Tiles.GetTile(type, isWall), isPlayer, isWall);
-        }
-
-        /// <summary>
-        /// Установить плитку в локальных координатах, по мировым координатам
-        /// </summary>
-        /// <param name="position"> Позиция </param>
-        /// <param name="tile"> Плитка </param>
-        /// <returns> True если плитка установленна </returns>
-        public bool SetTileByWorldPosition(Vector2f position, InfoTile? tile, bool isWall = false)
-        {
-            int x = (int)((position.X - Position.X) / InfoTile.TileSize);
-            int y = (int)((position.Y - Position.Y) / InfoTile.TileSize);
-
-            if (x < 0 || x >= ChunkSize || y < 0 || y >= ChunkSize)
+            if(!InBounds(x, y))
                 return false;
 
-            return SetTile(x, y, tile, isWall);
+            var upTile = GetTile(x, y - 1, true);
+            var downTile = GetTile(x, y + 1, true);
+            var leftTile = GetTile(x - 1, y, true);
+            var rightTile = GetTile(x + 1, y, true);
+
+            if (type != TileType.None)
+            {
+                switch(type)
+                {
+                    case TileType.Workbench:
+                        return SetWorkbench(x, y, type);
+                    case TileType.Stove:
+                        return SetStove(x, y, type);
+                    case TileType.Anvil:
+                        return SetAnvil(x, y, type);
+                }
+
+                var tile = Tiles.GetTile(type, this, upTile, downTile, leftTile, rightTile, new Vector2f(x, y));
+                tile.GlobalPosition = new Vector2f(x, y) * Tile.Tile.TileSize + Position;
+
+                int index = x * ChunkSize + y;
+
+                if (_tiles[index] != null)
+                {
+                    if (_chunkMeshs.ContainsKey(_tiles[index].Type))
+                    {
+                        SetTileToMesh(x, y, _tiles[index].Type, new Vertex[6]);
+                    }
+                }
+
+                SetTileToMesh(x, y, type, tile.GetVertices());
+
+                _tiles[index] = tile;
+
+                if (setWall)
+                    return SetWall(x, y, Tiles.TileTypeToWallType(type));
+            }
+            else
+            {
+                int index = x * ChunkSize + y;
+
+                if (_tiles[index] != null)
+                {
+                    if (_chunkMeshs.ContainsKey(_tiles[index].Type))
+                    {
+                        SetTileToMesh(x, y, _tiles[index].Type, new Vertex[6]);
+                    }
+                    _world.DropItem(_tiles[index].DropItem, _tiles[index].GlobalPosition);
+
+                    _tiles[index] = null;
+
+                    if (upTile != null)
+                        upTile!.DownTile = null;
+                    if (downTile != null)
+                        downTile!.UpTile = null;
+                    if (leftTile != null)
+                        leftTile!.RightTile = null;
+                    if (rightTile != null)
+                        rightTile!.LeftTile = null;
+                }
+            }
+
+            if (IsComplate)
+                GenerateColliders();
+
+            return true;
         }
 
         /// <summary>
@@ -197,18 +195,188 @@ namespace VoxelGame.Worlds
         /// <param name="position"> Позиция </param>
         /// <param name="tile"> Плитка </param>
         /// <returns> True если плитка установленна </returns>
-        public bool SetTileByWorldPosition(Vector2f position, TileType type, bool isPlayer = false, bool isWall = false)
+        public bool SetTileByWorldPosition(Vector2f position, TileType type, bool isPlayer = false)
         {
-            int x = (int)((position.X - Position.X) / InfoTile.TileSize);
-            int y = (int)((position.Y - Position.Y) / InfoTile.TileSize);
+            int x = (int)((position.X - Position.X) / Tile.Tile.TileSize);
+            int y = (int)((position.Y - Position.Y) / Tile.Tile.TileSize);
 
-            if(type == TileType.Chest)
+            return SetTile(x, y, type, isPlayer: isPlayer);
+        }
+
+        public bool SetWorkbench(int x, int y, TileType type)
+        {
+            var upTile = GetTile(x, y - 1, true);
+            var downTile = GetTile(x, y + 1, true);
+            var leftTile = GetTile(x - 1, y, true);
+            var rightTile = GetTile(x + 1, y, true);
+
+            if(leftTile == null)
             {
-                SetTile(x, y, type, isPlayer: isPlayer, isWall: true);
-                return AddTileEntity(new ChestEntity() { Chunk = this, Position = new Vector2f(x, y) * InfoTile.TileSize, Id = x * ChunkSize + y });
+                var tile = Tiles.GetTile(type, this, upTile, downTile, leftTile, rightTile, new Vector2f(x, y));
+                tile.GlobalPosition = new Vector2f(x, y) * Tile.Tile.TileSize + Position;
+
+                SetTileToMesh(x, y, type, tile.GetVertices());
+
+                int index = x * ChunkSize + y;
+
+                _tiles[index] = tile;
+
+                upTile = GetTile(x - 1, y - 1, true);
+                downTile = GetTile(x - 1, y + 1, true);
+                leftTile = GetTile(x - 2, y, true);
+                rightTile = GetTile(x, y, true);
+
+                var tileLeft = Tiles.GetTile(type, this, upTile, downTile, leftTile, rightTile, new Vector2f(x - 1, y));
+                tileLeft.GlobalPosition = new Vector2f(x - 1, y) * Tile.Tile.TileSize + Position;
+                tileLeft.PerentTile = tile;
+
+                SetTileToMesh(x - 1, y, type, tileLeft.GetVertices());
+
+                index = (x - 1) * ChunkSize + y;
+
+                if (index < 0)
+                    return _world.GetChunk(X - 1, Y) != null ?_world.GetChunk(X - 1, Y)!.SetWorkbench(ChunkSize + (x - 1), y, type) : false;
+
+                _tiles[index] = tileLeft;
+
+                return true;
+            }
+            else if (rightTile == null)
+            {
+                var tile = Tiles.GetTile(type, this, upTile, downTile, leftTile, rightTile, new Vector2f(x, y));
+                tile.GlobalPosition = new Vector2f(x, y) * Tile.Tile.TileSize + Position;
+
+                SetTileToMesh(x, y, type, tile.GetVertices());
+
+                int index = x * ChunkSize + y;
+
+                _tiles[index] = tile;
+
+                upTile = GetTile(x + 1, y - 1, true);
+                downTile = GetTile(x + 1, y + 1, true);
+                leftTile = GetTile(x, y, true);
+                rightTile = GetTile(x + 2, y, true);
+
+                var tileRight = Tiles.GetTile(type, this, upTile, downTile, leftTile, rightTile, new Vector2f(x + 1, y));
+                tileRight.GlobalPosition = new Vector2f(x + 1, y) * Tile.Tile.TileSize + Position;
+                tileRight.PerentTile = tile;
+
+                SetTileToMesh(x + 1, y, type, tileRight.GetVertices());
+
+                index = (x + 1) * ChunkSize + y;
+
+                _tiles[index] = tileRight;
+
+                return true;
             }
 
-            return SetTile(x, y, type, isPlayer: isPlayer, isWall: isWall);
+            return false;
+        }
+
+        public bool BreakingWorkbench(int x, int y)
+        {
+            var tile = GetTile(x, y);
+            var leftTile = GetTile(x - 1, y, true);
+            var rightTile = GetTile(x + 1, y, true);
+
+            if (tile != null && tile is TileWorkbench)
+            {
+                SetTile(x, y, TileType.None);
+                if (leftTile != null && leftTile is TileWorkbench)
+                {
+                    var upTile = GetTile(x - 1, y - 1, true);
+                    var downTile = GetTile(x - 1, y + 1, true);
+                    leftTile = GetTile(x - 2, y, true);
+                    rightTile = GetTile(x, y, true);
+
+                    int index = (x - 1) * ChunkSize + y;
+
+                    if (_tiles[index] != null)
+                    {
+                        if (_chunkMeshs.ContainsKey(_tiles[index].Type))
+                        {
+                            SetTileToMesh(x - 1, y, _tiles[index].Type, new Vertex[6]);
+                        }
+
+                        _tiles[index] = null;
+
+                        if (upTile != null)
+                            upTile!.DownTile = null;
+                        if (downTile != null)
+                            downTile!.UpTile = null;
+                        if (leftTile != null)
+                            leftTile!.RightTile = null;
+                        if (rightTile != null)
+                            rightTile!.LeftTile = null;
+
+                        return true;
+                    }
+                }
+                else if(rightTile != null && rightTile is TileWorkbench)
+                {
+                    var upTile = GetTile(x + 1, y - 1, true);
+                    var downTile = GetTile(x + 1, y + 1, true);
+                    leftTile = GetTile(x, y, true);
+                    rightTile = GetTile(x + 2, y, true);
+
+                    int index = (x + 1) * ChunkSize + y;
+
+                    if (_tiles[index] != null)
+                    {
+                        if (_chunkMeshs.ContainsKey(_tiles[index].Type))
+                        {
+                            SetTileToMesh(x + 1, y, _tiles[index].Type, new Vertex[6]);
+                        }
+
+                        _tiles[index] = null;
+
+                        if (upTile != null)
+                            upTile!.DownTile = null;
+                        if (downTile != null)
+                            downTile!.UpTile = null;
+                        if (leftTile != null)
+                            leftTile!.RightTile = null;
+                        if (rightTile != null)
+                            rightTile!.LeftTile = null;
+
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        public bool SetStove(int x, int y, TileType type)
+        {
+            return true;
+        }
+
+        public bool SetAnvil(int x, int y, TileType type)
+        {
+            return true;
+        }
+
+        /// <summary>
+        /// Установить плитку в локальных координатах сетки, по типу плитки
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        /// <param name="type"></param>
+        /// <param name="vertices"></param>
+        public void SetTileToMesh(int x, int y, TileType type, Vertex[] vertices)
+        {
+            if(_chunkMeshs.ContainsKey(type))
+            {
+                _chunkMeshs[type].SetToMesh(x, y, vertices);
+            }
+            else
+            {
+                var chunkMesh = new ChunkMesh(this);
+                chunkMesh.SetToMesh(x, y, vertices);
+
+                _chunkMeshs.Add(type, chunkMesh);
+            }
         }
 
         /// <summary>
@@ -217,28 +385,32 @@ namespace VoxelGame.Worlds
         /// <param name="x"> Позиция по Х </param>
         /// <param name="y"> Позиция по У </param>
         /// <returns> Плитку, null если х,у вышли за рамки чанка или если плитка null </returns>
-        public InfoTile? GetTile(int x, int y)
+        public Tile.Tile? GetTile(int x, int y, bool getOtherChunk = false)
         {
-            if(y < 0)
+            if (!InBounds(x, y) && !getOtherChunk)
             {
-                var upChunk = _world.GetChunk(X, Y - 1);
-                return upChunk != null ? upChunk.GetTile(x, ChunkSize + y) : null;
+                return null;
             }
-            else if(y >= ChunkSize)
+            else if(getOtherChunk)
             {
-                var downChunk = _world.GetChunk(X, Y + 1);
-                return downChunk != null ? downChunk.GetTile(x, y - ChunkSize) : null;
+                if (x < 0)
+                {
+                   return _world.GetChunk(X - 1, Y)?.GetTile(ChunkSize + x, y);
+                }
+                else if (x >= ChunkSize)
+                {
+                    return _world.GetChunk(X + 1, Y)?.GetTile(x - ChunkSize, y);
+                }
+                else if (y < 0)
+                {
+                    return _world.GetChunk(X, Y - 1)?.GetTile(x, ChunkSize + y);
+                }
+                else if (y >= ChunkSize)
+                {
+                    return _world.GetChunk(X, Y + 1)?.GetTile(x, y - ChunkSize);
+                }
             }
-            else if(x < 0)
-            {
-                var leftChunk = _world.GetChunk(X - 1, Y);
-                return leftChunk != null ? leftChunk.GetTile(ChunkSize + x, y) : null;
-            }
-            else if(x >= ChunkSize)
-            {
-                var rightChunk = _world.GetChunk(X + 1, Y);
-                return rightChunk != null ? rightChunk.GetTile(x - ChunkSize, y) : null;
-            }
+
 
             return _tiles[x * ChunkSize + y];
         }
@@ -248,157 +420,375 @@ namespace VoxelGame.Worlds
         /// </summary>
         /// <param name="position"> Позиция </param>
         /// <returns> Плитку, null если х,у вышли за рамки чанка или если плитка null </returns>
-        public InfoTile? GetTileByWorldPosition(Vector2f position)
+        public Tile.Tile? GetTileByWorldPosition(Vector2f position, bool getOtherChunk = false)
         {
-            int x = (int)((position.X - Position.X) / InfoTile.TileSize);
-            int y = (int)((position.Y - Position.Y) / InfoTile.TileSize);
-            return GetTile(x, y);
+            int x = (int)((position.X - Position.X) / Tile.Tile.TileSize);
+            int y = (int)((position.Y - Position.Y) / Tile.Tile.TileSize);
+
+            return GetTile(x, y, getOtherChunk);
         }
 
-        public bool BreakingTail(int x, int y, float damage, ItemType tool)
+        /// <summary>
+        /// Получить плитку по типу плитки
+        /// </summary>
+        /// <param name="type"> Тип плитки </param>
+        /// <returns></returns>
+        public Tile.Tile? GetTileByType(TileType type)
+        {
+            return _tiles.FirstOrDefault(t => t != null && t.Type == type);
+        }
+
+        /// <summary>
+        /// Получить список плиток по типу плитки
+        /// </summary>
+        /// <param name="type"> Тип плитки </param>
+        /// <returns></returns>
+        public List<Tile.Tile> GetTilesByType(TileType type)
+        {
+            return _tiles.Where(t => t != null && t.Type == type).ToList();
+        }
+
+        /// <summary>
+        /// Ломаем плитку, в локальных координатах
+        /// </summary>
+        /// <param name="x"> Х координата </param>
+        /// <param name="y"> У координата </param>
+        /// <param name="type"> Тип предмета которым ломаем </param>
+        /// <param name="itemPower"> Мощность предмета </param>
+        /// <param name="damage"> Урон по плитки </param>
+        /// <returns></returns>
+        public bool BreakingTile(int x, int y, ItemType type, float itemPower, float damage)
         {
             var tile = GetTile(x, y);
 
             if (tile != null)
             {
-                if(tile.BreakingTail(damage, tool) == null)
+                if(tile.BreakingTile(type, itemPower, damage))
                 {
                     if(tile.IsTree)
                     {
-                        return ChoppingTree(tile, x, y);
+                        ChoppingTree(tile, x, y);
                     }
 
-                    SetTile(x, y, null);
+                    switch(tile.Type)
+                    {
+                        case TileType.Workbench:
+                            return BreakingWorkbench(x, y);
+                    }
 
-                    return true;
+                    return SetTile(x, y, TileType.None);
                 }
             }
 
             return false;
         }
 
-        public bool BreakingTailByWorldPosition(Vector2f position, float damage, ItemType tool)
+        /// <summary>
+        /// Ломаем плитку, в мировых координатах
+        /// </summary>
+        /// <param name="position"> Позиия плитки </param>
+        /// <param name="type"> Тип предмета которым ломаем </param>
+        /// <param name="itemPower"> Мощность предмета </param>
+        /// <param name="damage"> Урон по плитки </param>
+        /// <returns></returns>
+        public bool BreakingTileByWorldPosition(Vector2f position, ItemType type, float itemPower, float damage)
         {
-            int x = (int)((position.X - Position.X) / InfoTile.TileSize);
-            int y = (int)((position.Y - Position.Y) / InfoTile.TileSize);
+            int x = (int)((position.X - Position.X) / Tile.Tile.TileSize);
+            int y = (int)((position.Y - Position.Y) / Tile.Tile.TileSize);
 
-            return BreakingTail(x, y, damage, tool);
+            return BreakingTile(x, y, type, itemPower, damage);
         }
 
-        public bool ChoppingTree(InfoTile treeTile, int x, int baseY)
+        /// <summary>
+        /// Обновляем вид плитки, в локальных координатах
+        /// </summary>
+        /// <param name="x"> Х координата </param>
+        /// <param name="y"> У координата </param>
+        /// <param name="vertices"> Массив вершин </param>
+        public void UpdateTileView(int x, int y, Vertex[] vertices)
         {
-            for (int y = 0; treeTile != null && treeTile.IsTree; y--)
+            var tile = GetTile(x, y);
+
+            if (tile == null)
+                return;
+
+            _chunkMeshs[tile.Type].UpdateViewMesh(x, y, vertices);
+        }
+
+        /// <summary>
+        /// Обновляем вид плитки, в мировых координатах
+        /// </summary>
+        /// <param name="position"> Позиция плитки </param>
+        /// <param name="vertices"> Массив вершин </param>
+        public void UpdateTileViewByWorldPosition(Vector2f position, Vertex[] vertices)
+        {
+            int x = (int)((position.X - Position.X) / Tile.Tile.TileSize);
+            int y = (int)((position.Y - Position.Y) / Tile.Tile.TileSize);
+
+            UpdateTileView(x, y, vertices);
+        }
+
+        /// <summary>
+        /// Обновляем цвет плитки, в локальных координатах
+        /// </summary>
+        /// <param name="color"> Цвет </param>
+        /// <param name="x"> Х координата </param>
+        /// <param name="y"> У координата </param>
+        public void UpdateTileColor(Color color, int x, int y)
+        {
+            var tile = GetTile(x, y);
+
+            if (tile != null && _chunkMeshs.ContainsKey(tile.Type))
             {
-                if (y != 0)
-                    treeTile = GetTile(x, baseY + y)!;
+                _chunkMeshs[tile.Type].UpdateTileColor(color, x, y);
+            }
+        }
 
-                if (treeTile != null && treeTile.IsTree)
-                    SetTile(x, baseY + y, null);
-                else
+        /// <summary>
+        /// Получить цвет плитки, по локальным координатам
+        /// </summary>
+        /// <param name="x"> Х координата </param>
+        /// <param name="y"> У координата </param>
+        /// <returns></returns>
+        public Color GetTileColor(int x, int y)
+        {
+            var tile = GetTile(x, y);
+
+            if (tile == null || !_chunkMeshs.ContainsKey(tile.Type))
+                return Color.Black;
+
+            return _chunkMeshs[tile.Type].GetTileColor(x, y);
+        }
+
+
+        ///------------------------------Стенки-------------------------///
+
+        /// <summary>
+        /// Установить стенку в локальных координатах, по типу стенки
+        /// </summary>
+        /// <param name="type"> Тип стенки </param>
+        /// <param name="x"> Позиция по Х </param>
+        /// <param name="y"> Позиция по У </param>
+        public bool SetWall(int x, int y, WallType type)
+        {
+            if (!InBounds(x, y))
+                return false;
+
+            var upWall = GetWall(x, y - 1, true);
+            var downWall = GetWall(x, y + 1, true);
+            var leftWall = GetWall(x - 1, y, true);
+            var rightWall = GetWall(x + 1, y, true);
+
+            if (type != WallType.None)
+            {
+                var wall = Tiles.GetWall(type, this, upWall, downWall, leftWall, rightWall, new Vector2f(x, y));
+                wall.GlobalPosition = new Vector2f(x, y) * Tile.Tile.TileSize + Position;
+
+                int index = x * ChunkSize + y;
+
+                _tilesWall[index] = wall;
+
+                SetWallToMesh(x, y, type, wall.GetVertices());
+            }
+            else
+            {
+                int index = x * ChunkSize + y;
+                
+                if (_tilesWall[index] != null)
                 {
-                    baseY += y - 2;
-                }
+                    if (_chunkMeshsWall.ContainsKey(_tilesWall[index].Type))
+                    {
+                         SetWallToMesh(x, y, _tilesWall[index].Type, new Vertex[6]);
+                    }
 
+                    _tilesWall[index] = null;
+
+                    if (upWall != null)
+                        upWall!.DownWall = null;
+                    if (downWall != null)
+                        downWall!.UpWall = null;
+                    if (leftWall != null)
+                        leftWall!.RightWall = null;
+                    if (rightWall != null)
+                        rightWall!.LeftWall = null;
+                }
             }
 
-            if (treeTile != null && treeTile.Type == TileType.Leaves)
-            {
-                // Ставим листву
-                int top = baseY;
-                for (int dx = -2; dx <= 2; dx++)
-                {
-                    for (int dy = -2; dy <= 2; dy++)
-                    {
-                        int leafX = x + dx;
-                        int leafY = top + dy;
+            return true;
+        }
 
-                        float dist = MathF.Abs(dx) + MathF.Abs(dy); // крест
-                        if (dist <= 3)
-                        {
-                            SetTile(leafX, leafY, null);
-                        }
+        /// <summary>
+        /// Установить стенку в локальных координатах, по мировым координатам, по типу стенки
+        /// </summary>
+        /// <param name="position"> Позиия в мировых координатах </param>
+        /// <param name="type"> Тип стенки </param>
+        /// <returns></returns>
+        public bool SetWallByWorldPosition(Vector2f position, WallType type)
+        {
+            int x = (int)((position.X - Position.X) / Tile.Tile.TileSize);
+            int y = (int)((position.Y - Position.Y) / Tile.Tile.TileSize);
+
+            return SetWall(x, y, type);
+        }
+
+        /// <summary>
+        /// Установить стенку в локальных координатах, в сетке, по типу стенки
+        /// </summary>
+        /// <param name="x"> Позиция по Х </param>
+        /// <param name="y"> Позиция по У </param>
+        /// <param name="type"> Тип стенки </param>
+        /// <param name="vertices"> Вершины </param>
+        public void SetWallToMesh(int x, int y, WallType type, Vertex[] vertices)
+        {
+            if (_chunkMeshsWall.ContainsKey(type))
+            {
+                _chunkMeshsWall[type].SetToMesh(x, y, vertices);
+            }
+            else
+            {
+                var chunkMesh = new ChunkMesh(this);
+                chunkMesh.SetToMesh(x, y, vertices);
+
+                _chunkMeshsWall.Add(type, chunkMesh);
+            }
+        }
+
+        /// <summary>
+        /// Получить стенку по локальным координатам
+        /// </summary>
+        /// <param name="x"> Позиция по X </param>
+        /// <param name="y"> Позиция по Y </param>
+        /// <param name="getOtherChunk"> Проверять соседнии чанки? </param>
+        /// <returns></returns>
+        public WallTile? GetWall(int x, int y, bool getOtherChunk = false)
+        {
+            if (!InBounds(x, y) && !getOtherChunk)
+            {
+                return null;
+            }
+            else if (getOtherChunk)
+            {
+                if (x < 0)
+                {
+                    return _world.GetChunk(X - 1, Y)?.GetWall(ChunkSize + x, y);
+                }
+                else if (x >= ChunkSize)
+                {
+                    return _world.GetChunk(X + 1, Y)?.GetWall(x - ChunkSize, y);
+                }
+                else if (y < 0)
+                {
+                    return _world.GetChunk(X, Y - 1)?.GetWall(x, ChunkSize + y);
+                }
+                else if (y >= ChunkSize)
+                {
+                    return _world.GetChunk(X, Y + 1)?.GetWall(x, y - ChunkSize);
+                }
+            }
+
+
+            return _tilesWall[x * ChunkSize + y];
+        }
+
+        /// <summary>
+        /// Получить стенку по мировым координатам
+        /// </summary>
+        /// <param name="position"> Позиция в мировых координатах </param>
+        /// <param name="getOtherChunk"> Проверять соседнии чанки? </param>
+        /// <returns></returns>
+        public WallTile? GetWallByWorldPosition(Vector2f position, bool getOtherChunk = false)
+        {
+            int x = (int)((position.X - Position.X) / Tile.Tile.TileSize);
+            int y = (int)((position.Y - Position.Y) / Tile.Tile.TileSize);
+
+            return GetWall(x, y, getOtherChunk);
+        }
+
+        /// <summary>
+        /// Обновляем вид стенки, в локальных координатах
+        /// </summary>
+        /// <param name="x"> Позиция по X </param>
+        /// <param name="y"> Позиция по Y </param>
+        /// <param name="vertices"> Массив вершин </param>
+        public void UpdateWallView(int x, int y, Vertex[] vertices)
+        {
+            var tile = GetWall(x, y);
+
+            if (tile == null)
+                return;
+
+            _chunkMeshsWall[tile.Type].UpdateViewMesh(x, y, vertices);
+        }
+
+        /// <summary>
+        /// Обновляем вид стенки, в мировых координатах
+        /// </summary>
+        /// <param name="position"> Позиция стенки в мировых координатах </param>
+        /// <param name="vertices"> Массив вершин </param>
+        public void UpdateWallViewByWorldPosition(Vector2f position, Vertex[] vertices)
+        {
+            int x = (int)((position.X - Position.X) / Tile.Tile.TileSize);
+            int y = (int)((position.Y - Position.Y) / Tile.Tile.TileSize);
+
+            UpdateWallView(x, y, vertices);
+        }
+
+        /// <summary>
+        /// Обновляем цвет стенки, в локальных координатах
+        /// </summary>
+        /// <param name="color"> Цвет </param>
+        /// <param name="x"> Позиция по X </param>
+        /// <param name="y"> Позиция по Y </param>
+        public void UpdateWallColor(Color color, int x, int y)
+        {
+            var wall = GetWall(x, y);
+
+            if (wall != null && _chunkMeshsWall.ContainsKey(wall.Type))
+            {
+                _chunkMeshsWall[wall.Type].UpdateTileColor(color, x, y);
+            }
+        }
+
+        /// <summary>
+        /// Получить цвет стенки, по локальным координатам
+        /// </summary>
+        /// <param name="x"> Позиция по X </param>
+        /// <param name="y"> Позиция по Y </param>
+        /// <returns></returns>
+        public Color GetWallColor(int x, int y)
+        {
+            var wall = GetWall(x, y);
+
+            if (wall == null || !_chunkMeshsWall.ContainsKey(wall.Type))
+                return Color.Black;
+
+            return _chunkMeshsWall[wall.Type].GetTileColor(x, y);
+        }
+
+        /// <summary>
+        /// Рубим дерево
+        /// </summary>
+        /// <param name="treeTile"> Плитка дерева </param>
+        /// <param name="x"> Позиция по X </param>
+        /// <param name="startY"> Позиция по Y </param>
+        /// <returns></returns>
+        public bool ChoppingTree(Tile.Tile treeTile, int x, int startY)
+        {
+            for (int y = 0; treeTile != null && (treeTile.IsTree || treeTile.IsTreeTop); y--)
+            {
+                if (y != 0)
+                    treeTile = GetTile(x, startY + y, true)!;
+
+                if (treeTile != null)
+                {
+                    if(!SetTile(x, startY + y, TileType.None))
+                    {
+                        _world.GetChunk(X, Y - 1)?.SetTile(x, ChunkSize + (startY + y), TileType.None);
                     }
                 }
             }
 
-
             return true;
-        }
-
-        public bool AddTileEntity(TileEntity tileEntity)
-        {
-            if (_tilesEntiy.Contains(tileEntity) || _tilesEntiy.Find(t => tileEntity.Id == t.Id) != null)
-                return false;
-
-            _tilesEntiy.Add(tileEntity);
-
-            return true;
-        }
-
-        public TileEntity? GetTileEntity(int index)
-        {
-            return _tilesEntiy.Find(t => t.Id == index);
-        }
-
-        public TileEntity? GetTileEntityByWorldPosition(Vector2f position)
-        {
-            int x = (int)((position.X - Position.X) / InfoTile.TileSize);
-            int y = (int)((position.Y - Position.Y) / InfoTile.TileSize);
-
-
-            return GetTileEntity(x * ChunkSize + y);
-        }
-
-        public bool RemoveTileEntity(TileEntity tileEntity)
-        {
-            return _tilesEntiy.Remove(tileEntity);
-        }
-
-        public void UpdateTileColor(Color color, int x, int y)
-        {
-            if (GetTile(x, y) != null)
-            {
-                if(GetTile(x, y)!.IsWall)
-                {
-                    if (color.R >= 80)
-                        color = new Color((byte)(color.R - 80), (byte)(color.R - 80), (byte)(color.R - 80));
-                }
-                _chunkMesh.UpdateTileColor(color, x, y);
-            }
-        }
-
-        public Color GetTileColor(int x, int y)
-        {
-            if(y < 0)
-            {
-                if(GetTile(x, y) != null)
-                {
-                    return GetTile(x, y)!.Chunk!.GetTileColor(x, ChunkSize + y);
-                }
-            }
-            else if(y >= ChunkSize)
-            {
-                if (GetTile(x, y) != null)
-                {
-                    return GetTile(x, y)!.Chunk!.GetTileColor(x, y - ChunkSize);
-                }
-            }
-            else if(x < 0)
-            {
-                if (GetTile(x, y) != null)
-                {
-                    return GetTile(x, y)!.Chunk!.GetTileColor(ChunkSize + x, y);
-                }
-            }
-            else if(x >= ChunkSize)
-            {
-                if (GetTile(x, y) != null)
-                {
-                    return GetTile(x, y)!.Chunk!.GetTileColor(x - ChunkSize, y);
-                }
-            }
-
-            return _chunkMesh.GetTileColor(x, y);
         }
 
         /// <summary>
@@ -422,23 +812,21 @@ namespace VoxelGame.Worlds
                     var leftTile = GetTile(x - 1, y);
                     var rightTile = GetTile(x + 1, y);
 
-
-                    upTile = upTile != null && upTile!.IsTree ? null : upTile;
-                    downTile = downTile != null && downTile!.IsTree ? null : downTile;
-                    leftTile = leftTile != null && leftTile!.IsTree ? null : leftTile;
-                    rightTile = rightTile != null && rightTile!.IsTree ? null : rightTile;
-
-                    if (tile == null || !tile.IsCollide)
+                    if (tile == null || !tile.IsSolid)
                         continue;
 
-                    if ((upTile == null || !upTile.IsCollide) || (downTile == null || !downTile.IsCollide) || (leftTile == null || !leftTile.IsCollide) || (rightTile == null || !rightTile.IsCollide))
+                    if ((upTile == null || !upTile.IsSolid) || (downTile == null || !downTile.IsSolid) || (leftTile == null || !leftTile.IsSolid) || (rightTile == null || !rightTile.IsSolid))
                     {
-                        _colliders.Add(new AABB(new Vector2f(x, y) * InfoTile.TileSize + Position, new Vector2f(x, y) * InfoTile.TileSize + new Vector2f(InfoTile.TileSize, InfoTile.TileSize) + Position));
+                        _colliders.Add(new AABB(tile.GlobalPosition, tile.GlobalPosition + new Vector2f(Tile.Tile.TileSize, Tile.Tile.TileSize)));
                     }
                 }
             }
         }
 
+        /// <summary>
+        /// Обновляем чанк
+        /// </summary>
+        /// <param name="deltaTime"> Время кадра </param>
         public void Update(float deltaTime)
         {
             foreach(var e in _tilesEntiy)
@@ -448,20 +836,40 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Рисуем чанк
+        /// Рисуем стены чанка
         /// </summary>
         /// <param name="target"></param>
         /// <param name="states"></param>
-        public void Draw(RenderTarget target, RenderStates states)
+        public void DrawWall(RenderTarget target, RenderStates states)
         {
             states.Transform *= Transform;
-            states.Texture = AssetManager.GetTexture("terrain");
-            states.BlendMode = BlendMode.Alpha;
 
-            target.Draw(_chunkMesh.GetChunkMesh(), PrimitiveType.Triangles, states);
+            foreach (var chunkMesh in _chunkMeshsWall)
+            {
+                states.Texture = AssetManager.GetTexture(chunkMesh.Key.ToString());
 
-            foreach(var e in _tilesEntiy)
+                target.Draw(chunkMesh.Value.GetChunkMesh(), PrimitiveType.Triangles, states);
+            }
+
+            foreach (var e in _tilesEntiy)
                 e.Draw(target, states);
+        }
+
+        /// <summary>
+        /// Рисуем стены чанка
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="states"></param>
+        public void DrawTile(RenderTarget target, RenderStates states)
+        {
+            states.Transform *= Transform;
+
+            foreach (var chunkMesh in _chunkMeshs)
+            {
+                states.Texture = AssetManager.GetTexture(chunkMesh.Key.ToString());
+
+                target.Draw(chunkMesh.Value.GetChunkMesh(), PrimitiveType.Triangles, states);
+            }
         }
 
         /// <summary>
@@ -470,7 +878,7 @@ namespace VoxelGame.Worlds
         /// <returns> AABB </returns>
         public AABB GetAABB()
         {
-            return new AABB(Position.X, Position.Y, Position.X + ChunkSize * InfoTile.TileSize, Position.Y + ChunkSize * InfoTile.TileSize);
+            return new AABB(Position.X, Position.Y, Position.X + ChunkSize * Tile.Tile.TileSize, Position.Y + ChunkSize * Tile.Tile.TileSize);
         }
 
         /// <summary>
@@ -479,6 +887,15 @@ namespace VoxelGame.Worlds
         public List<AABB> GetColliders()
         {
             return _colliders;
+        }
+
+        /// <summary>
+        /// Руализуем интерфейс Drawable
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="states"></param>
+        public void Draw(RenderTarget target, RenderStates states)
+        {
         }
     }
 }

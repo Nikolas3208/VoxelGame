@@ -1,6 +1,7 @@
 ﻿using SFML.Graphics;
 using SFML.System;
 using SFML.Window;
+using VoxelGame.Resources;
 using VoxelGame.UI;
 using VoxelGame.Worlds;
 
@@ -27,6 +28,7 @@ namespace VoxelGame
 
             _windowSize = _window.Size;
 
+            AssetManager.Load();
             _world = WorldGenerator.GenerateWorld(600, 200);
         }
 
@@ -34,7 +36,7 @@ namespace VoxelGame
         {
             var clock = new Clock();
 
-            _window.SetFramerateLimit(60);
+            _window.SetVerticalSyncEnabled(true);
 
             while (_window.IsOpen)
             {
@@ -64,9 +66,9 @@ namespace VoxelGame
             var cameraCenterPosition = _cameraPosition - (Vector2f)_window.Size / 2;
             var view = new View(new FloatRect(cameraCenterPosition, (Vector2f)_window.Size));
             if (Keyboard.IsKeyPressed(Keyboard.Key.R))
-                view.Zoom(4);
+                view.Zoom(0.2f);
             else
-                view.Zoom(0.5f);
+                view.Zoom(GetZoom());
             _window.SetView(view);
 
             _world.Draw(target, states);
@@ -83,7 +85,7 @@ namespace VoxelGame
         public static float GetZoom() => 0.5f;
         public static Vector2u GetWindowSize() => _windowSize;
         public static Vector2f GetMousePosition() => _mousePos;
-        public static Vector2f GetMousePositionByWorld() => (_mousePos * 0.5f) + (_cameraPosition - ((Vector2f)_windowSize / 2 * 0.5f));
+        public static Vector2f GetMousePositionByWorld() => (_mousePos * GetZoom()) + (_cameraPosition - ((Vector2f)_windowSize / 2 * GetZoom()));
         public static Vector2f GetCameraPosition() => _cameraPosition;
         public static Vector2f GetCenterScreenByWorld() => _cameraPosition - (Vector2f)_windowSize / 2;
     }

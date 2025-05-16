@@ -1,5 +1,6 @@
 ﻿using SFML.Graphics;
 using SFML.System;
+using SFML.Window;
 using VoxelGame.Meths;
 using VoxelGame.Worlds.Tile;
 
@@ -7,151 +8,50 @@ namespace VoxelGame.Worlds
 {
     public class Light
     {
+        private static byte[,] _lightMap = new byte[Chunk.ChunkSize, Chunk.ChunkSize];
+        private static byte[,] _lightMapWall = new byte[Chunk.ChunkSize, Chunk.ChunkSize];
+
         public static Color BaseColor { get; set; } = Color.White;
-        public static void LightingChunk(Chunk chunk, List<Vector2f> pointsLight)
+        public static void LightingChunk(Chunk chunk, List<Chunk> visibleChunk, List<Vector2f> pointsLight)
         {
+
+            ClearLight(chunk);
+
             for (int x = 0; x < Chunk.ChunkSize; x++)
             {
                 LightTopDown(chunk, x);
                 LightDownTop(chunk, x);
             }
 
+
             for (int x = 0; x < Chunk.ChunkSize; x++)
             {
                 LightLeftToRight(chunk, x);
                 LightRightToLeft(chunk, x);
             }
-
-            LightPoint(chunk, pointsLight);
         }
 
-        public static void LightTopDown(Chunk chunk, int x)
-        {
-            for (int y = 0; y < Chunk.ChunkSize; y++)
-            {
-                var tile = chunk.GetTile(x, y);
-                var tileUp = chunk.GetTile(x, y - 1);
-
-                if (tile != null && tileUp == null)
-                {
-                    chunk.UpdateTileColor(BaseColor, x, y);
-                }
-
-                if (tile != null && tileUp != null)
-                {
-                    int light = chunk.GetTileColor(x, y - 1).R;
-
-                    light -= 36;
-
-                    if (light < 0)
-                        light = 0;
-
-                    chunk.UpdateTileColor(new Color((byte)light, (byte)light, (byte)light), x, y);
-                }
-            }
-        }
-
-        public static void LightDownTop(Chunk chunk, int x)
-        {
-            for (int y = Chunk.ChunkSize; y > 0; y--)
-            {
-                var tile = chunk.GetTile(x, y);
-                var tileUp = chunk.GetTile(x, y + 1);
-
-                if (tile != null && tileUp == null)
-                {
-                    chunk.UpdateTileColor(BaseColor, x, y);
-                }
-
-                if (tile != null && tileUp != null)
-                {
-                    int lightLeftTile = chunk.GetTileColor(x, y + 1).R;
-                    int light = chunk.GetTileColor(x, y).R;
-                    int accumLight = lightLeftTile;
-
-                    accumLight = lightLeftTile - 36;
-
-                    if (accumLight < 0)
-                        accumLight = 0;
-
-                    if (light < accumLight)
-                        light = accumLight;
-
-                    if (light > 255)
-                        light = 255;
-
-                    chunk.UpdateTileColor(new Color((byte)light, (byte)light, (byte)light), x, y);
-                }
-            }
-        }
-
-        public static void LightLeftToRight(Chunk chunk, int y)
+        private static void ClearLight(Chunk chunk)
         {
             for (int x = 0; x < Chunk.ChunkSize; x++)
             {
-                var tile = chunk.GetTile(x, y);
-                var tileLeft = chunk.GetTile(x - 1, y);
-
-                if (tile != null && tileLeft == null)
+                for (int y = 0; y < Chunk.ChunkSize; y++)
                 {
-                    chunk.UpdateTileColor(BaseColor, x, y);
-                }
-
-                if (tile != null && tileLeft != null)
-                {
-                    int lightLeftTile = chunk.GetTileColor(x - 1, y).R;
-                    int light = chunk.GetTileColor(x, y).R;
-
-                    int accumLight = lightLeftTile;
-
-                    accumLight = lightLeftTile - 36;
-
-                    if (light < accumLight)
-                        light = accumLight;
-
-                    if (light > 255)
-                        light = 255;
-
-                    chunk.UpdateTileColor(new Color((byte)light, (byte)light, (byte)light), x, y);
+                    if(chunk.GetTile(x, y) != null)
+                    {
+                        chunk.UpdateTileColor(Color.Black, x, y);
+                    }
+                    if(chunk.GetWall(x, y) != null)
+                    {
+                        chunk.UpdateWallColor(Color.Black, x, y);
+                    }
                 }
             }
         }
 
-        public static void LightRightToLeft(Chunk chunk, int y)
+        private static void ClearLight(List<Chunk> chunks)
         {
-            for (int x = Chunk.ChunkSize; x > 0; x--)
-            {
-                var tile = chunk.GetTile(x, y);
-                var tileLeft = chunk.GetTile(x + 1, y);
-
-                if (tile != null && tileLeft == null)
-                {
-                    chunk.UpdateTileColor(BaseColor, x, y);
-                }
-
-                if (tile != null && tileLeft != null)
-                {
-                    int lightLeftTile = chunk.GetTileColor(x + 1, y).R;
-                    int light = chunk.GetTileColor(x, y).R;
-
-                    int accumLight = lightLeftTile;
-
-                    accumLight = lightLeftTile - 36;
-
-                    if (light < accumLight)
-                        light = accumLight;
-
-                    if (light > 255)
-                        light = 255;
-
-                    chunk.UpdateTileColor(new Color((byte)light, (byte)light, (byte)light), x, y);
-                }
-            }
-        }
-
-        public static void LightPoint(Chunk chunk, List<Vector2f> pointsLight)
-        {
-            foreach (var point in pointsLight)
+            foreach (var chunk in chunks)
             {
                 for (int x = 0; x < Chunk.ChunkSize; x++)
                 {
@@ -159,31 +59,268 @@ namespace VoxelGame.Worlds
                     {
                         if (chunk.GetTile(x, y) != null)
                         {
-                            Vector2f tilePos = new Vector2f(x, y) * InfoTile.TileSize + chunk.Position;
+                            chunk.UpdateTileColor(Color.Black, x, y);
+                        }
+                        if (chunk.GetWall(x, y) != null)
+                        {
+                            chunk.UpdateWallColor(Color.Black, x, y);
+                        }
+                    }
+                }
+            }
+        }
 
-                            float tileDistanceToPlayer = MathHelper.Distance(point, tilePos);
+        private static void PropagateLight(Chunk chunk, int x, int y, int fromX, int fromY, bool wall)
+        {
+            ITile? tile = chunk.GetTile(x, y, true);
+            ITile? tileFrom = chunk.GetTile(fromX, fromY, true);
+            ITile? tileFromOpposite = chunk.GetWall(fromX, fromY, true);
 
-                            if (tileDistanceToPlayer < 7 * InfoTile.TileSize)
+            if (wall)
+            {
+                tile = chunk.GetWall(x, y, true);
+                tileFrom = chunk.GetWall(fromX, fromY, true);
+                tileFromOpposite = chunk.GetTile(fromX, fromY, true);
+            }
+
+            if (tile == null)
+                return;
+
+            // Если соседние плитки пустые — пускаем базовый свет
+            if (tileFrom == null && tileFromOpposite == null)
+            {
+                if (!wall)
+                {
+                    chunk.UpdateTileColor(BaseColor, x, y);
+                }
+                else
+                {
+                    chunk.UpdateWallColor(BaseColor, x, y);
+                }
+
+                return;
+            }
+
+            // Смотрим свет от соседей
+            int light = 0;
+            if (tileFrom != null)
+            {
+                if (!wall)
+                {
+                    light = chunk.GetTileColor(fromX, fromY).R;
+                }
+                else
+                {
+                    light = chunk.GetWallColor(fromX, fromY).R;
+                }
+            }
+            else if (tileFromOpposite != null)
+            {
+                if (!wall)
+                {
+                    light = chunk.GetTileColor(fromX, fromY).R;
+                }
+                else
+                {
+                    light = chunk.GetWallColor(fromX, fromY).R;
+                }
+            }
+
+            light -= 36;
+            light = Math.Clamp(light, 0, 255);
+
+            if (!wall)
+            {
+                int currentLight = chunk.GetTileColor(x, y).R;
+
+                if (light > currentLight)
+                    chunk.UpdateTileColor(new Color((byte)light, (byte)light, (byte)light), x, y);
+            }
+            else
+            {
+                int currentLight = chunk.GetWallColor(x, y).R;
+
+                if (light > currentLight)
+                    chunk.UpdateWallColor(new Color((byte)light, (byte)light, (byte)light), x, y);
+            }
+        }
+
+        public static void LightTopDown(Chunk chunk, int x)
+        {
+            for (int y = 0; y < Chunk.ChunkSize; y++)
+            {
+                PropagateLight(chunk, x, y, x, y - 1, false);
+                PropagateLight(chunk, x, y, x, y - 1, true);
+            }
+        }
+
+        public static void LightDownTop(Chunk chunk, int x)
+        {
+            for (int y = Chunk.ChunkSize; y >= 0; y--)
+            {
+                PropagateLight(chunk, x, y, x, y + 1, false);
+                PropagateLight(chunk, x, y, x, y + 1, true);
+            }
+        }
+
+        public static void LightLeftToRight(Chunk chunk, int y)
+        {
+            for (int x = 0; x < Chunk.ChunkSize; x++)
+            {
+                PropagateLight(chunk, x, y, x - 1, y, false);
+                PropagateLight(chunk, x, y, x - 1, y, true);
+            }
+        }
+
+        public static void LightRightToLeft(Chunk chunk, int y)
+        {
+            for (int x = Chunk.ChunkSize; x >= 0; x--)
+            {
+                PropagateLight(chunk, x, y, x + 1, y, false);
+                PropagateLight(chunk, x, y, x + 1, y, true);
+            }
+        }
+
+        public static void LightPoint(Chunk chunk, List<Vector2f> pointsLight)
+        {
+            var lights = chunk.GetTilesByType(TileType.Torch);
+
+            foreach (var light in lights)
+            {
+                for (int x = 0; x < Chunk.ChunkSize; x++)
+                {
+                    for (int y = 0; y < Chunk.ChunkSize; y++)
+                    {
+                        if (chunk.GetTile(x, y) != null)
+                        {
+                            Vector2f tilePos = new Vector2f(x, y) * Tile.Tile.TileSize + chunk.Position;
+
+                            float tileDistanceToLight = MathHelper.Distance(light.GlobalPosition, tilePos);
+
+                            int newLight = byte.MaxValue - (int)(tileDistanceToLight / Tile.Tile.TileSize) * 36;
+
+                            if (newLight < 0)
+                                continue;
+
+                            if (newLight > chunk.GetTileColor(x, y).R && newLight > _lightMap[x, y])
                             {
-                                int light = 255 - ((int)((tileDistanceToPlayer / InfoTile.TileSize) - 1) * 26);
-                                if (light < 0)
-                                    light = 0;
+                                _lightMap[x, y] = (byte)newLight;
+                                chunk.UpdateTileColor(new Color((byte)_lightMap[x, y], (byte)_lightMap[x, y], (byte)_lightMap[x, y]), x, y);
+                            }
+                        }
 
-                                var tileColor = chunk.GetTileColor(x, y);
+                        if (chunk.GetWall(x, y) != null)
+                        {
+                            Vector2f tilePos = new Vector2f(x, y) * WallTile.WallSize + chunk.Position;
 
-                                //if (tileColor.R > light)
-                                //light = chunk.GetTileColor(x, y).R;
+                            float tileDistanceToLight = MathHelper.Distance(light.GlobalPosition, tilePos);
 
-                                if (light > 255)
-                                    light = 255;
+                            int newLight = byte.MaxValue - (int)tileDistanceToLight / Tile.Tile.TileSize * 36;
 
-                                chunk.UpdateTileColor(new Color((byte)light, (byte)light, (byte)light), x, y);
+                            if (newLight < 0)
+                            {
+                                newLight = 0;
+                            }
+
+                            if (newLight > chunk.GetWallColor(x, y).R && newLight > _lightMapWall[x, y])
+                            {
+                                if (newLight > 255)
+                                    newLight = 255;
+
+                                _lightMapWall[x, y] = (byte)newLight;
+
+                                chunk.UpdateWallColor(new Color((byte)_lightMapWall[x, y], (byte)_lightMapWall[x, y], (byte)_lightMapWall[x, y]), x, y);
                             }
                         }
                     }
                 }
             }
         }
+
+        public static void LightPoint(Chunk currentChunk, List<Chunk> visibleChunks, List<Vector2f> pointsLight)
+        {
+
+            var lightSources = currentChunk.GetTilesByType(TileType.Torch);
+
+
+            foreach (var lightSource in lightSources)
+            {
+                int x = (int)(lightSource.GlobalPosition.X - currentChunk.Position.X / Tile.Tile.TileSize);
+                int y = (int)(lightSource.GlobalPosition.Y - currentChunk.Position.Y / Tile.Tile.TileSize);
+
+                TorchLight.ApplyTorchLight(currentChunk, x, y, 7);
+            }
+
+            currentChunk.LightColorTile = new byte[Chunk.ChunkSize, Chunk.ChunkSize];
+            currentChunk.LightColorWall = new byte[Chunk.ChunkSize, Chunk.ChunkSize];
+
+            foreach (var chunk in visibleChunks)
+            {
+                foreach (var light in lightSources)
+                {
+                    Vector2f lightGlobalPos = light.GlobalPosition;
+
+                    for (int x = 0; x < Chunk.ChunkSize; x++)
+                    {
+                        for (int y = 0; y < Chunk.ChunkSize; y++)
+                        {
+                            var tile = chunk.GetTile(x, y, true);
+                            var tileWall = chunk.GetWall(x, y);
+
+                            if (tile == null && tileWall == null)
+                                continue;
+
+                            
+
+                            if (tile != null)
+                            {
+                                Vector2f tileGlobalPos = tile.GlobalPosition;
+                                float distance = MathHelper.Distance(lightGlobalPos, tileGlobalPos);
+
+                                byte previousColor = chunk.GetTileColor(x, y).R;
+                                byte previousColorWall = chunk.GetWallColor(x, y).R;
+
+                                int newLight = byte.MaxValue - (int)(distance / Tile.Tile.TileSize) * 36;
+
+                                if (newLight < 0)
+                                    continue;
+
+                                newLight = Math.Clamp(newLight, 0, 255);
+
+                                if (newLight > previousColor && newLight > chunk.LightColorTile[x, y])
+                                {
+                                    chunk.LightColorTile[x, y] = (byte)newLight;
+                                    chunk.UpdateTileColor(new Color((byte)newLight, (byte)newLight, (byte)newLight), x, y);
+                                }
+                            }
+
+                            if (tileWall != null)
+                            {
+                                Vector2f tileGlobalPos = tileWall.GlobalPosition;
+                                float distance = MathHelper.Distance(lightGlobalPos, tileGlobalPos);
+
+                                byte previousColor = chunk.GetTileColor(x, y).R;
+                                byte previousColorWall = chunk.GetWallColor(x, y).R;
+
+                                int newLight = byte.MaxValue - (int)(distance / WallTile.WallSize) * 36;
+
+                                if (newLight < 0)
+                                    continue;
+
+                                newLight = Math.Clamp(newLight, 0, 255);
+
+                                if (newLight > previousColorWall && newLight > chunk.LightColorWall[x, y])
+                                {
+                                    chunk.LightColorWall[x, y] = (byte)newLight;
+                                    chunk.UpdateWallColor(new Color((byte)newLight, (byte)newLight, (byte)newLight), x, y);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
 
         public static Color CalculateGlobalLight(float t)
         {
@@ -196,4 +333,63 @@ namespace VoxelGame.Worlds
             return BaseColor;
         }
     }
+
+    public static class TorchLight
+    {
+        public static void ApplyTorchLight(Chunk chunk, int torchX, int torchY, int radius = 7)
+        {
+            Queue<(int x, int y)> queue = new();
+            Dictionary<(int x, int y), byte> visited = new();
+
+            // Максимальная яркость света от факела
+            const byte maxLight = 255;
+            queue.Enqueue((torchX, torchY));
+            visited[(torchX, torchY)] = maxLight;
+
+            while (queue.Count > 0)
+            {
+                var (x, y) = queue.Dequeue();
+                byte lightLevel = visited[(x, y)];
+
+                if (!chunk.InBounds(x, y)) continue;
+
+                // Наложение света (можно сделать смешивание, если хочешь мягче)
+                chunk.UpdateTileColor(new Color(lightLevel, lightLevel, lightLevel), x, y);
+                chunk.UpdateWallColor(new Color(lightLevel, lightLevel, lightLevel), x, y);
+
+                // Дальше не идем, если свет слишком слабый
+                if (lightLevel <= 20) continue;
+
+                foreach (var (dx, dy) in new[] { (1, 0), (-1, 0), (0, 1), (0, -1) })
+                {
+                    int nx = x + dx;
+                    int ny = y + dy;
+
+                    if (!chunk.InBounds(nx, ny)) continue;
+
+                    float dist = Distance(torchX, torchY, nx, ny);
+                    if (dist > radius) continue;
+
+                    byte nextLight = (byte)(maxLight * (1f - dist / radius));
+                    if (nextLight < 20) continue;
+
+                    if (!visited.TryGetValue((nx, ny), out byte existingLight) || nextLight > existingLight)
+                    {
+                        visited[(nx, ny)] = nextLight;
+                        queue.Enqueue((nx, ny));
+                    }
+                }
+            }
+        }
+
+        private static float Distance(int x1, int y1, int x2, int y2)
+        {
+            int dx = x2 - x1;
+            int dy = y2 - y1;
+            return MathF.Sqrt(dx * dx + dy * dy);
+        }
+    }
+
 }
+
+
