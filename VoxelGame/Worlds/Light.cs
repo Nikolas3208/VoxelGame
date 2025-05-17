@@ -242,15 +242,6 @@ namespace VoxelGame.Worlds
 
             var lightSources = currentChunk.GetTilesByType(TileType.Torch);
 
-
-            foreach (var lightSource in lightSources)
-            {
-                int x = (int)(lightSource.GlobalPosition.X - currentChunk.Position.X / Tile.Tile.TileSize);
-                int y = (int)(lightSource.GlobalPosition.Y - currentChunk.Position.Y / Tile.Tile.TileSize);
-
-                TorchLight.ApplyTorchLight(currentChunk, x, y, 7);
-            }
-
             currentChunk.LightColorTile = new byte[Chunk.ChunkSize, Chunk.ChunkSize];
             currentChunk.LightColorWall = new byte[Chunk.ChunkSize, Chunk.ChunkSize];
 
@@ -280,7 +271,7 @@ namespace VoxelGame.Worlds
                                 byte previousColor = chunk.GetTileColor(x, y).R;
                                 byte previousColorWall = chunk.GetWallColor(x, y).R;
 
-                                int newLight = byte.MaxValue - (int)(distance / Tile.Tile.TileSize) * 36;
+                                int newLight = byte.MaxValue - (int)(distance / Tile.Tile.TileSize) * 26;
 
                                 if (newLight < 0)
                                     continue;
@@ -302,7 +293,7 @@ namespace VoxelGame.Worlds
                                 byte previousColor = chunk.GetTileColor(x, y).R;
                                 byte previousColorWall = chunk.GetWallColor(x, y).R;
 
-                                int newLight = byte.MaxValue - (int)(distance / WallTile.WallSize) * 36;
+                                int newLight = byte.MaxValue - (int)(distance / Tile.Tile.TileSize) * 26;
 
                                 if (newLight < 0)
                                     continue;
@@ -325,7 +316,7 @@ namespace VoxelGame.Worlds
         public static Color CalculateGlobalLight(float t)
         {
             // Симметричная синусоида: 0.0 → ночь, 0.5 → день, 1.0 → ночь
-            float intensity = 0.2f + 0.8f * MathF.Sin(t * MathF.PI); // 0.2..1.0
+            float intensity = 0.05f + 0.95f * MathF.Sin(t * MathF.PI); // 0.2..1.0
 
             byte light = (byte)(intensity * 255);
             BaseColor = new Color(light, light, light);
@@ -333,63 +324,6 @@ namespace VoxelGame.Worlds
             return BaseColor;
         }
     }
-
-    public static class TorchLight
-    {
-        public static void ApplyTorchLight(Chunk chunk, int torchX, int torchY, int radius = 7)
-        {
-            Queue<(int x, int y)> queue = new();
-            Dictionary<(int x, int y), byte> visited = new();
-
-            // Максимальная яркость света от факела
-            const byte maxLight = 255;
-            queue.Enqueue((torchX, torchY));
-            visited[(torchX, torchY)] = maxLight;
-
-            while (queue.Count > 0)
-            {
-                var (x, y) = queue.Dequeue();
-                byte lightLevel = visited[(x, y)];
-
-                if (!chunk.InBounds(x, y)) continue;
-
-                // Наложение света (можно сделать смешивание, если хочешь мягче)
-                chunk.UpdateTileColor(new Color(lightLevel, lightLevel, lightLevel), x, y);
-                chunk.UpdateWallColor(new Color(lightLevel, lightLevel, lightLevel), x, y);
-
-                // Дальше не идем, если свет слишком слабый
-                if (lightLevel <= 20) continue;
-
-                foreach (var (dx, dy) in new[] { (1, 0), (-1, 0), (0, 1), (0, -1) })
-                {
-                    int nx = x + dx;
-                    int ny = y + dy;
-
-                    if (!chunk.InBounds(nx, ny)) continue;
-
-                    float dist = Distance(torchX, torchY, nx, ny);
-                    if (dist > radius) continue;
-
-                    byte nextLight = (byte)(maxLight * (1f - dist / radius));
-                    if (nextLight < 20) continue;
-
-                    if (!visited.TryGetValue((nx, ny), out byte existingLight) || nextLight > existingLight)
-                    {
-                        visited[(nx, ny)] = nextLight;
-                        queue.Enqueue((nx, ny));
-                    }
-                }
-            }
-        }
-
-        private static float Distance(int x1, int y1, int x2, int y2)
-        {
-            int dx = x2 - x1;
-            int dy = y2 - y1;
-            return MathF.Sqrt(dx * dx + dy * dy);
-        }
-    }
-
 }
 
 

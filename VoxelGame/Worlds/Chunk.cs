@@ -39,7 +39,7 @@ namespace VoxelGame.Worlds
         /// <summary>
         /// Сетка плиток чанка
         /// </summary>
-        private Dictionary<TileType, ChunkMesh> _chunkMeshs { get; }
+        private Dictionary<string, ChunkMesh> _chunkMeshs { get; }
 
         /// <summary>
         /// Сетка стен чанка
@@ -86,7 +86,7 @@ namespace VoxelGame.Worlds
             LightColorWall = new byte[ChunkSize, ChunkSize];
 
             _colliders = new List<AABB>(ChunkSize * ChunkSize);
-            _chunkMeshs = new Dictionary<TileType, ChunkMesh>();
+            _chunkMeshs = new Dictionary<string, ChunkMesh>();
             _chunkMeshsWall = new Dictionary<WallType, ChunkMesh>();
         }
 
@@ -123,14 +123,11 @@ namespace VoxelGame.Worlds
 
             if (type != TileType.None && (!IsComplate || !isPlayerSet))
             {
-                switch(type)
+                var tile = Tiles.GetTile(type, this, upTile, downTile, leftTile, rightTile, wall, new Vector2f(x, y));
+
+                if (tile.Size.X > 1 || tile.Size.Y > 1)
                 {
-                    case TileType.Workbench:
-                        return SetWorkbench(x, y, type);
-                    case TileType.Stove:
-                        return SetStove(x, y, type);
-                    case TileType.Anvil:
-                        return SetAnvil(x, y, type);
+                    return SetMultipleTile(x, y, type, upTile, downTile, leftTile, rightTile, wall);
                 }
 
                 SetTileToMeshAndList(x, y, type, upTile, downTile, leftTile, rightTile, wall);
@@ -140,14 +137,11 @@ namespace VoxelGame.Worlds
             }
             else if(type != TileType.None && IsComplate && isPlayerSet)
             {
-                switch (type)
+                var tile = Tiles.GetTile(type, this, upTile, downTile, leftTile, rightTile, wall, new Vector2f(x, y));
+
+                if (tile.Size.X > 1 || tile.Size.Y > 1)
                 {
-                    case TileType.Workbench:
-                        return SetWorkbench(x, y, type);
-                    case TileType.Stove:
-                        return SetStove(x, y, type);
-                    case TileType.Anvil:
-                        return SetAnvil(x, y, type);
+                    return SetMultipleTile(x, y, type, upTile, downTile, leftTile, rightTile, wall);
                 }
 
                 if (upTile != null || downTile != null || leftTile != null || rightTile != null || wall != null)
@@ -163,9 +157,9 @@ namespace VoxelGame.Worlds
 
                 if (_tiles[index] != null)
                 {
-                    if (_chunkMeshs.ContainsKey(_tiles[index].Type))
+                    if (_chunkMeshs.ContainsKey(_tiles[index].TextureName))
                     {
-                        SetTileToMesh(x, y, _tiles[index].Type, new Vertex[6]);
+                        SetTileToMesh(x, y, _tiles[index].TextureName, new Vertex[6]);
                     }
                     _world.DropItem(_tiles[index].DropItem, _tiles[index].GlobalPosition);
 
@@ -215,13 +209,13 @@ namespace VoxelGame.Worlds
 
             if (_tiles[index] != null)
             {
-                if (_chunkMeshs.ContainsKey(_tiles[index].Type))
+                if (_chunkMeshs.ContainsKey(_tiles[index].TextureName))
                 {
-                    SetTileToMesh(x, y, _tiles[index].Type, new Vertex[6]);
+                    SetTileToMesh(x, y, _tiles[index].TextureName, new Vertex[6]);
                 }
             }
 
-            SetTileToMesh(x, y, type, tile.GetVertices());
+            SetTileToMesh(x, y, tile.TextureName, tile.GetVertices());
 
 
             _tiles[index] = tile;
@@ -247,33 +241,137 @@ namespace VoxelGame.Worlds
         /// <param name="y"> Позиция по У </param>
         /// <param name="type"> Тип верстака </param>
         /// <returns></returns>
-        public bool SetWorkbench(int x, int y, TileType type)
+        public bool SetMultipleTile(int startX, int startY, TileType type, Tile.Tile? upTile, Tile.Tile? downTile,
+            Tile.Tile? leftTile, Tile.Tile? rightTile, WallTile? wall)
         {
-            var upTile = GetTile(x, y - 1, true);
-            var downTile = GetTile(x, y + 1, true);
-            var leftTile = GetTile(x - 1, y, true);
-            var rightTile = GetTile(x + 1, y, true);
+            var tile = Tiles.GetTile(type, this, upTile, downTile, leftTile, rightTile, wall, new Vector2f(startX, startY));
 
-            if(leftTile == null)
+            if(tile == null)
+                return false;
+
+            bool setRight = true;
+            bool setLeft = true;
+
+            for (int x = 0; x < tile.Size.X; x++)
             {
-                var baseTile = SetTileToMeshAndList(x, y, type);
+                for (int y = 0; y < tile.Size.Y; y++)
+                {
+                    if(GetTile(x + startX, startY - y, true) != null)
+                    {
+                        setRight = false;
+                        break;
+                    }
 
-                var leftTileWorkbench = SetTileToMeshAndList(x - 1, y, type);
-                leftTileWorkbench.PerentTile = baseTile;
+                    if (GetTile(x + startX, startY + 1, true) == null || !GetTile(x + startX, startY + 1, true)!.IsSolid)
+                    {
+                        setRight = false;
+                        break;
+                    }
+                }
+
+                if(!setRight)
+                    break;
+            }
+
+            Tile.Tile? baseTile = null;
+
+            if (setRight)
+            {
+                for (int x = 0; x < tile.Size.X; x++)
+                {
+                    for (int y = 0; y < tile.Size.Y; y++)
+                    {
+                        if (baseTile == null)
+                            baseTile = SetTileToMeshAndList(x + startX, startY - y, type);
+                        else
+                        {
+                            var newTile = SetTileToMeshAndList(x + startX, startY - y, type);
+                            newTile.PerentTile = baseTile;
+                        }
+                    }
+                }
 
                 return true;
             }
-            else if (rightTile == null)
+            else
             {
-                var baseTile = SetTileToMeshAndList(x, y, type);
+                for (int x = 0; x < tile.Size.X; x++)
+                {
+                    for (int y = 0; y < tile.Size.Y; y++)
+                    {
+                        if (GetTile(startX - x, startY - y, true) != null)
+                        {
+                            setLeft = false;
+                            break;
+                        }
 
-                var rightTileWorkbench = SetTileToMeshAndList(x + 1, y, type);
-                rightTileWorkbench.PerentTile = baseTile;
+                        if (GetTile(startX - x, startY + 1, true) == null || !GetTile(startX - x, startY + 1, true)!.IsSolid)
+                        {
+                            setLeft = false;
+                            break;
+                        }
+                    }
 
-                return true;
+                    if(!setLeft)
+                        break;
+                }
+
+                if (setLeft)
+                {
+                    for (int x = 0; x < tile.Size.X; x++)
+                    {
+                        for (int y = 0; y < tile.Size.Y; y++)
+                        {
+                            if (baseTile == null)
+                                baseTile = SetTileToMeshAndList(startX - x, startY - y, type);
+                            else
+                            {
+                                var newTile = SetTileToMeshAndList(startX - x, startY - y, type);
+                                newTile.PerentTile = baseTile;
+                            }
+                        }
+                    }
+                    return true;
+
+                }
+                else
+                {
+                    for (int x = -(int)tile.Size.X / 2; x < tile.Size.X / 2; x++)
+                    {
+                        for (int y = 0; y < tile.Size.Y; y++)
+                        {
+                            if (GetTile(startX + x, startY - y, true) != null)
+                            {
+                                return false;
+                            }
+
+                            if (GetTile(startX + x, startY + 1, true) == null || !GetTile(startX + x, startY + 1, true)!.IsSolid)
+                            {
+                                return false;
+                            }
+                        }
+
+                        if (!setLeft)
+                            break;
+                    }
+
+                    for (int x = -(int)tile.Size.X / 2; x < tile.Size.X / 2; x++)
+                    {
+                        for (int y = 0; y < tile.Size.Y; y++)
+                        {
+                            if (baseTile == null)
+                                baseTile = SetTileToMeshAndList(startX + x, startY - y, type);
+                            else
+                            {
+                                var newTile = SetTileToMeshAndList(startX + x, startY - y, type);
+                                newTile.PerentTile = baseTile;
+                            }
+                        }
+                    }
+
+                    return true;
+                }
             }
-
-            return false;
         }
 
         public bool BreakingWorkbench(int x, int y)
@@ -296,9 +394,9 @@ namespace VoxelGame.Worlds
 
                     if (_tiles[index] != null)
                     {
-                        if (_chunkMeshs.ContainsKey(_tiles[index].Type))
+                        if (_chunkMeshs.ContainsKey(_tiles[index].TextureName))
                         {
-                            SetTileToMesh(x - 1, y, _tiles[index].Type, new Vertex[6]);
+                            SetTileToMesh(x - 1, y, _tiles[index].TextureName, new Vertex[6]);
                         }
 
                         _tiles[index] = null;
@@ -326,9 +424,9 @@ namespace VoxelGame.Worlds
 
                     if (_tiles[index] != null)
                     {
-                        if (_chunkMeshs.ContainsKey(_tiles[index].Type))
+                        if (_chunkMeshs.ContainsKey(_tiles[index].TextureName))
                         {
-                            SetTileToMesh(x + 1, y, _tiles[index].Type, new Vertex[6]);
+                            SetTileToMesh(x + 1, y, _tiles[index].TextureName, new Vertex[6]);
                         }
 
                         _tiles[index] = null;
@@ -350,68 +448,6 @@ namespace VoxelGame.Worlds
             return false;
         }
 
-        public bool SetStove(int x, int y, TileType type)
-        {
-            var upTile = GetTile(x, y - 1, true);
-            var downTile = GetTile(x, y + 1, true);
-            var leftTile = GetTile(x - 1, y, true);
-            var rightTile = GetTile(x + 1, y, true);
-
-            var upLeftTile = GetTile(x - 1, y - 1, true);
-            var upRightTile = GetTile(x + 1, y - 1, true);
-
-            if (rightTile == null && leftTile == null && upTile == null && upLeftTile == null && upRightTile == null)
-            {
-                var baseTile = SetTileToMeshAndList(x, y, type);
-                var upTileStove = SetTileToMeshAndList(x, y - 1, type);
-                upTileStove.PerentTile = baseTile;
-                var leftTileStove = SetTileToMeshAndList(x - 1, y, type);
-                leftTileStove.PerentTile = baseTile;
-                var rightTileStove = SetTileToMeshAndList(x + 1, y, type);
-                rightTileStove.PerentTile = baseTile;
-                var upLeftTileStove = SetTileToMeshAndList(x - 1, y - 1, type);
-                upLeftTileStove.PerentTile = baseTile;
-                var upRightTileStove = SetTileToMeshAndList(x + 1, y - 1, type);
-                upRightTileStove.PerentTile = baseTile;
-
-                return true;
-            }
-
-            return false;
-        }
-
-        public bool BreakingStove(int x, int y)
-        {
-            var tile = GetTile(x, y);
-            var upTile = GetTile(x, y - 1, true);
-            var leftTile = GetTile(x - 1, y, true);
-            var rightTile = GetTile(x + 1, y, true);
-
-            if (tile != null && tile is TileStove)
-            {
-                SetTile(x, y, TileType.None);
-                if (upTile != null && upTile is TileStove)
-                {
-
-                }
-                if (leftTile != null && leftTile is TileStove)
-                {
-                    SetTile(x - 1, y, TileType.None);
-                }
-                if (rightTile != null && rightTile is TileStove)
-                {
-                    SetTile(x + 1, y, TileType.None);
-                }
-                return true;
-            }
-            return false;
-        }
-
-        public bool SetAnvil(int x, int y, TileType type)
-        {
-            return true;
-        }
-
         /// <summary>
         /// Установить плитку в локальных координатах сетки, по типу плитки
         /// </summary>
@@ -419,18 +455,18 @@ namespace VoxelGame.Worlds
         /// <param name="y"></param>
         /// <param name="type"></param>
         /// <param name="vertices"></param>
-        public void SetTileToMesh(int x, int y, TileType type, Vertex[] vertices)
+        public void SetTileToMesh(int x, int y, string textureName, Vertex[] vertices)
         {
-            if(_chunkMeshs.ContainsKey(type))
+            if(_chunkMeshs.ContainsKey(textureName))
             {
-                _chunkMeshs[type].SetToMesh(x, y, vertices);
+                _chunkMeshs[textureName].SetToMesh(x, y, vertices);
             }
             else
             {
                 var chunkMesh = new ChunkMesh(this);
                 chunkMesh.SetToMesh(x, y, vertices);
 
-                _chunkMeshs.Add(type, chunkMesh);
+                _chunkMeshs.Add(textureName, chunkMesh);
             }
         }
 
@@ -529,8 +565,6 @@ namespace VoxelGame.Worlds
                     {
                         case TileType.Workbench:
                             return BreakingWorkbench(x, y);
-                        case TileType.Stove:
-                            return BreakingStove(x, y);
                     }
 
                     return SetTile(x, y, TileType.None);
@@ -569,7 +603,7 @@ namespace VoxelGame.Worlds
             if (tile == null)
                 return;
 
-            _chunkMeshs[tile.Type].UpdateViewMesh(x, y, vertices);
+            _chunkMeshs[tile.TextureName].UpdateViewMesh(x, y, vertices);
         }
 
         /// <summary>
@@ -595,9 +629,9 @@ namespace VoxelGame.Worlds
         {
             var tile = GetTile(x, y);
 
-            if (tile != null && _chunkMeshs.ContainsKey(tile.Type))
+            if (tile != null && _chunkMeshs.ContainsKey(tile.TextureName))
             {
-                _chunkMeshs[tile.Type].UpdateTileColor(color, x, y);
+                _chunkMeshs[tile.TextureName].UpdateTileColor(color, x, y);
             }
         }
 
@@ -611,10 +645,10 @@ namespace VoxelGame.Worlds
         {
             var tile = GetTile(x, y);
 
-            if (tile == null || !_chunkMeshs.ContainsKey(tile.Type))
+            if (tile == null || !_chunkMeshs.ContainsKey(tile.TextureName))
                 return Color.Black;
 
-            return _chunkMeshs[tile.Type].GetTileColor(x, y);
+            return _chunkMeshs[tile.TextureName].GetTileColor(x, y);
         }
 
 
@@ -642,7 +676,14 @@ namespace VoxelGame.Worlds
             }
             else if(type != WallType.None && isPlayerSet)
             {
-                if(upWall != null || downWall != null || leftWall != null || rightWall != null)
+                var upTile = GetTile(x, y - 1, true);
+                var downTile = GetTile(x, y + 1, true);
+                var leftTile = GetTile(x - 1, y, true);
+                var rightTile = GetTile(x + 1, y, true);
+                var tile = GetTile(x, y, true);
+
+                if (upWall != null || downWall != null || leftWall != null || rightWall != null
+                    || upTile != null || downTile != null || leftTile != null || rightTile != null || tile != null)
                 {
                     SetWallToMeshAndList(x, y, type, upWall, downWall, leftWall, rightWall);
                 }
@@ -973,7 +1014,7 @@ namespace VoxelGame.Worlds
 
             foreach (var chunkMesh in _chunkMeshs)
             {
-                states.Texture = AssetManager.GetTexture(chunkMesh.Key.ToString());
+                states.Texture = AssetManager.GetTexture(chunkMesh.Key);
 
                 target.Draw(chunkMesh.Value.GetChunkMesh(), PrimitiveType.Triangles, states);
             }

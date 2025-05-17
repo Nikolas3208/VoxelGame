@@ -1,7 +1,7 @@
 ﻿using SFML.Graphics;
 using SFML.System;
 using SFML.Window;
-using VoxelGame.Graphics.Animation;
+using VoxelGame.Graphics;
 using VoxelGame.Item;
 using VoxelGame.Meths;
 using VoxelGame.Physics;
@@ -23,13 +23,14 @@ namespace VoxelGame
         private Item.Item? _selectedItem;
         private float _playerAnimationSpeed = 0.1f;
 
-        private Animator _animatorHair;
-        private Animator _animatorHead;
-        private Animator _animatorShirt;
-        private Animator _animatorUndershirt;
-        private Animator _animatorHands;
-        private Animator _animatorPants;
-        private Animator _animatorShoes;
+        // Спрайты с анимацией
+        private AnimSprite asHair;         // Волосы
+        private AnimSprite asHead;         // Голова
+        private AnimSprite asShirt;        // Рубашка
+        private AnimSprite asUndershirt;   // Рукава
+        private AnimSprite asHands;        // Кисти
+        private AnimSprite asPants;         // Ноги
+        private AnimSprite asShoes;        // Обувь
 
         private float breakingSpeed = 1f;
 
@@ -45,20 +46,15 @@ namespace VoxelGame
             _inventory = new UIInventory(new Vector2f(UIInventoryCell.CellSize * 10, UIInventoryCell.CellSize));
             _inventory.Player = this;
 
-            _animatorHair = new Animator();
-            _animatorHead = new Animator();
-            _animatorShirt = new Animator();
-            _animatorUndershirt = new Animator();
-            _animatorHands = new Animator();
-            _animatorPants = new Animator();
-            _animatorShoes = new Animator();
-
             UIManager.AddWindow(_inventory);
 
             _inventory.AddItem(Items.GetItem(ItemList.CopperPickaxe), 1);
             _inventory.AddItem(Items.GetItem(ItemList.CopperAxe), 1);
             _inventory.AddItem(Items.GetItem(ItemList.Stove), 1);
+            _inventory.AddItem(Items.GetItem(ItemList.OakBoard), 64);
+            _inventory.AddItem(Items.GetItem(ItemList.OakBoardWall), 64);
             _inventory.AddItem(Items.GetItem(ItemList.Torch), 64);
+            _inventory.AddItem(Items.GetItem(ItemList.Door), 2);
 
             CraftTools = new List<CraftTool>();
 
@@ -78,298 +74,211 @@ namespace VoxelGame
             var ssPants = AssetManager.GetSpriteSheet("Player_Pants", 1, 20, true, 0);
             var ssShoes = AssetManager.GetSpriteSheet("Player_Shoes", 1, 20, true, 0);
 
-            //Стоит волосы
-            Animation idleHair = new Animation("idleHeir") { Position = new Vector2f(0, 22) };
-            idleHair.SetAnimationFrames(new AnimationFrame(0, _playerAnimationSpeed));
-            idleHair.SetAnimSprite(new AnimSprite(ssHair) { Color = HairColor });
+            // Волосы
+            asHair = new AnimSprite(ssHair);
+            asHair.Position = new Vector2f(0, 19);
+            asHair.Color = HairColor;
+            asHair.AddAnimation("idle", new Animation(
+                new AnimationFrame(0, 0, 0.1f)));
+            asHair.AddAnimation("tool", new Animation(
+                new AnimationFrame(0, 0, 1f)));
+            asHair.AddAnimation("jump", new Animation(
+                new AnimationFrame(0, 5, 0.1f)));
+            asHair.AddAnimation("run", new Animation(
+                new AnimationFrame(0, 0, 0.1f),
+                new AnimationFrame(0, 1, 0.1f),
+                new AnimationFrame(0, 2, 0.1f),
+                new AnimationFrame(0, 3, 0.1f),
+                new AnimationFrame(0, 4, 0.1f),
+                new AnimationFrame(0, 5, 0.1f),
+                new AnimationFrame(0, 6, 0.1f),
+                new AnimationFrame(0, 7, 0.1f),
+                new AnimationFrame(0, 8, 0.1f),
+                new AnimationFrame(0, 9, 0.1f),
+                new AnimationFrame(0, 10, 0.1f),
+                new AnimationFrame(0, 11, 0.1f),
+                new AnimationFrame(0, 12, 0.1f),
+                new AnimationFrame(0, 13, 0.1f)
+            ));
 
-            //Инстумент волосы
-            Animation toolHair = new Animation("toolHeir") { Position = new Vector2f(0, 22) };
-            toolHair.SetAnimationFrames(new AnimationFrame(0, _playerAnimationSpeed));
-            toolHair.SetAnimSprite(new AnimSprite(ssHair) { Color = HairColor });
+            // Голова
+            asHead = new AnimSprite(ssHead);
+            asHead.Position = new Vector2f(0, 19);
+            asHead.Color = BodyColor;
+            asHead.AddAnimation("idle", new Animation(
+                new AnimationFrame(0, 0, 0.1f)));
+            asHead.AddAnimation("tool", new Animation(
+                new AnimationFrame(0, 0, 1f)));
+            asHead.AddAnimation("jump", new Animation(
+                new AnimationFrame(0, 5, 0.1f)));
+            asHead.AddAnimation("run", new Animation(
+                new AnimationFrame(0, 6, 0.1f),
+                new AnimationFrame(0, 7, 0.1f),
+                new AnimationFrame(0, 8, 0.1f),
+                new AnimationFrame(0, 9, 0.1f),
+                new AnimationFrame(0, 10, 0.1f),
+                new AnimationFrame(0, 11, 0.1f),
+                new AnimationFrame(0, 12, 0.1f),
+                new AnimationFrame(0, 13, 0.1f),
+                new AnimationFrame(0, 14, 0.1f),
+                new AnimationFrame(0, 15, 0.1f),
+                new AnimationFrame(0, 16, 0.1f),
+                new AnimationFrame(0, 17, 0.1f),
+                new AnimationFrame(0, 18, 0.1f),
+                new AnimationFrame(0, 19, 0.1f)
+            ));
 
-            //Прыжок волосы
-            Animation jumHair = new Animation("jumHands") { Position = new Vector2f(0, 22) };
-            jumHair.SetAnimationFrames(new AnimationFrame(0, _playerAnimationSpeed));
-            jumHair.SetAnimSprite(new AnimSprite(ssHair) { Color = HairColor });
+            // Рубашка
+            asShirt = new AnimSprite(ssShirt);
+            asShirt.Position = new Vector2f(0, 19);
+            asShirt.Color = ShirtColor;
+            asShirt.AddAnimation("idle", new Animation(
+                new AnimationFrame(0, 0, 0.1f)));
+            asShirt.AddAnimation("tool", new Animation(
+                new AnimationFrame(0, 0, 0.5f),
+                new AnimationFrame(0, 1, 0.5f),
+                new AnimationFrame(0, 2, 0.5f),
+                new AnimationFrame(0, 3, 0.5f),
+                new AnimationFrame(0, 4, 0.5f)));
+            asShirt.AddAnimation("jump", new Animation(
+                new AnimationFrame(0, 5, 0.1f)));
+            asShirt.AddAnimation("run", new Animation(
+                new AnimationFrame(0, 6, 0.1f),
+                new AnimationFrame(0, 7, 0.1f),
+                new AnimationFrame(0, 8, 0.1f),
+                new AnimationFrame(0, 9, 0.1f),
+                new AnimationFrame(0, 10, 0.1f),
+                new AnimationFrame(0, 11, 0.1f),
+                new AnimationFrame(0, 12, 0.1f),
+                new AnimationFrame(0, 13, 0.1f),
+                new AnimationFrame(0, 14, 0.1f),
+                new AnimationFrame(0, 15, 0.1f),
+                new AnimationFrame(0, 16, 0.1f),
+                new AnimationFrame(0, 17, 0.1f),
+                new AnimationFrame(0, 18, 0.1f),
+                new AnimationFrame(0, 19, 0.1f)
+            ));
 
-            //Бег волосы
-            Animation runHair = new Animation("runHeir") { Position = new Vector2f(0, 22) };
-            runHair.SetAnimationFrames(
-                new AnimationFrame(0, _playerAnimationSpeed),
-                new AnimationFrame(1, _playerAnimationSpeed),
-                new AnimationFrame(2, _playerAnimationSpeed),
-                new AnimationFrame(3, _playerAnimationSpeed),
-                new AnimationFrame(4, _playerAnimationSpeed),
-                new AnimationFrame(5, _playerAnimationSpeed),
-                new AnimationFrame(6, _playerAnimationSpeed),
-                new AnimationFrame(7, _playerAnimationSpeed),
-                new AnimationFrame(8, _playerAnimationSpeed),
-                new AnimationFrame(9, _playerAnimationSpeed),
-                new AnimationFrame(10, _playerAnimationSpeed),
-                new AnimationFrame(11, _playerAnimationSpeed),
-                new AnimationFrame(12, _playerAnimationSpeed),
-                new AnimationFrame(13, _playerAnimationSpeed));
-            runHair.SetAnimSprite(new AnimSprite(ssHair) { Color = HairColor });
+            // Рукава
+            asUndershirt = new AnimSprite(ssUndershirt);
+            asUndershirt.Position = new Vector2f(0, 19);
+            asUndershirt.AddAnimation("idle", new Animation(
+                new AnimationFrame(0, 0, 1f)));
+            asUndershirt.AddAnimation("tool", new Animation(
+                new AnimationFrame(0, 0, 0.5f),
+                new AnimationFrame(0, 1, 0.5f),
+                new AnimationFrame(0, 2, 0.5f),
+                new AnimationFrame(0, 3, 0.5f),
+                new AnimationFrame(0, 4, 0.5f)));
+            asUndershirt.AddAnimation("jump", new Animation(
+                new AnimationFrame(0, 5, 0.1f)));
+            asUndershirt.AddAnimation("run", new Animation(
+                new AnimationFrame(0, 6, 0.1f),
+                new AnimationFrame(0, 7, 0.1f),
+                new AnimationFrame(0, 8, 0.1f),
+                new AnimationFrame(0, 9, 0.1f),
+                new AnimationFrame(0, 10, 0.1f),
+                new AnimationFrame(0, 11, 0.1f),
+                new AnimationFrame(0, 12, 0.1f),
+                new AnimationFrame(0, 13, 0.1f),
+                new AnimationFrame(0, 14, 0.1f),
+                new AnimationFrame(0, 15, 0.1f),
+                new AnimationFrame(0, 16, 0.1f),
+                new AnimationFrame(0, 17, 0.1f),
+                new AnimationFrame(0, 18, 0.1f),
+                new AnimationFrame(0, 19, 0.1f)
+            ));
 
-            _animatorHair.AddAnimation("Idle", idleHair);
-            _animatorHair.AddAnimation("Tool", toolHair);
-            _animatorHair.AddAnimation("Run", runHair);
-            _animatorHair.AddAnimation("Jump", jumHair);
+            // Кисти
+            asHands = new AnimSprite(ssHands);
+            asHands.Position = new Vector2f(0, 19);
+            asHands.Color = BodyColor;
+            asHands.AddAnimation("idle", new Animation(
+                new AnimationFrame(0, 0, 0.1f)));
+            asHands.AddAnimation("tool", new Animation(
+                new AnimationFrame(0, 0, 0.5f),
+                new AnimationFrame(0, 1, 0.5f),
+                new AnimationFrame(0, 2, 0.5f),
+                new AnimationFrame(0, 3, 0.5f),
+                new AnimationFrame(0, 4, 0.5f)));
+            asHands.AddAnimation("jump", new Animation(
+                new AnimationFrame(0, 5, 0.1f)));
+            asHands.AddAnimation("run", new Animation(
+                new AnimationFrame(0, 6, 0.1f),
+                new AnimationFrame(0, 7, 0.1f),
+                new AnimationFrame(0, 8, 0.1f),
+                new AnimationFrame(0, 9, 0.1f),
+                new AnimationFrame(0, 10, 0.1f),
+                new AnimationFrame(0, 11, 0.1f),
+                new AnimationFrame(0, 12, 0.1f),
+                new AnimationFrame(0, 13, 0.1f),
+                new AnimationFrame(0, 14, 0.1f),
+                new AnimationFrame(0, 15, 0.1f),
+                new AnimationFrame(0, 16, 0.1f),
+                new AnimationFrame(0, 17, 0.1f),
+                new AnimationFrame(0, 18, 0.1f),
+                new AnimationFrame(0, 19, 0.1f)
+            ));
 
-            //Стоит голова
-            Animation idleHead = new Animation("idleHead") { Position = new Vector2f(0, 22) };
-            idleHead.SetAnimationFrames(new AnimationFrame(0, _playerAnimationSpeed));
-            idleHead.SetAnimSprite(new AnimSprite(ssHead) { Color = BodyColor });
+            // Ноги
+            asPants = new AnimSprite(ssPants);
+            asPants.Color = PantsColor;
+            asPants.Position = new Vector2f(0, 19);
+            asPants.AddAnimation("idle", new Animation(
+                new AnimationFrame(0, 0, 0.1f)));
+            asPants.AddAnimation("tool", new Animation(
+                new AnimationFrame(0, 0, 0.1f)));
+            asPants.AddAnimation("jump", new Animation(
+                new AnimationFrame(0, 5, 0.1f)));
+            asPants.AddAnimation("run", new Animation(
+                new AnimationFrame(0, 6, 0.1f),
+                new AnimationFrame(0, 7, 0.1f),
+                new AnimationFrame(0, 8, 0.1f),
+                new AnimationFrame(0, 9, 0.1f),
+                new AnimationFrame(0, 10, 0.1f),
+                new AnimationFrame(0, 11, 0.1f),
+                new AnimationFrame(0, 12, 0.1f),
+                new AnimationFrame(0, 13, 0.1f),
+                new AnimationFrame(0, 14, 0.1f),
+                new AnimationFrame(0, 15, 0.1f),
+                new AnimationFrame(0, 16, 0.1f),
+                new AnimationFrame(0, 17, 0.1f),
+                new AnimationFrame(0, 18, 0.1f),
+                new AnimationFrame(0, 19, 0.1f)
+            ));
 
-            //Инстумент голова
-            Animation toolHead = new Animation("toolHead") { Position = new Vector2f(0, 22) };
-            toolHead.SetAnimationFrames(new AnimationFrame(0, _playerAnimationSpeed));
-            toolHead.SetAnimSprite(new AnimSprite(ssHead) { Color = BodyColor });
-
-            //Прыжок голова
-            Animation jumHead = new Animation("jumHead") { Position = new Vector2f(0, 22) };
-            jumHead.SetAnimationFrames(new AnimationFrame(5, _playerAnimationSpeed));
-            jumHead.SetAnimSprite(new AnimSprite(ssHead) { Color = BodyColor });
-
-            //Бег голова
-            Animation runHead = new Animation("runHead") { Position = new Vector2f(0, 22) };
-            runHead.SetAnimationFrames(
-                new AnimationFrame(6, _playerAnimationSpeed),
-                new AnimationFrame(7, _playerAnimationSpeed),
-                new AnimationFrame(8, _playerAnimationSpeed),
-                new AnimationFrame(9, _playerAnimationSpeed),
-                new AnimationFrame(10, _playerAnimationSpeed),
-                new AnimationFrame(11, _playerAnimationSpeed),
-                new AnimationFrame(12, _playerAnimationSpeed),
-                new AnimationFrame(13, _playerAnimationSpeed),
-                new AnimationFrame(14, _playerAnimationSpeed),
-                new AnimationFrame(15, _playerAnimationSpeed),
-                new AnimationFrame(16, _playerAnimationSpeed),
-                new AnimationFrame(17, _playerAnimationSpeed),
-                new AnimationFrame(18, _playerAnimationSpeed),
-                new AnimationFrame(19, _playerAnimationSpeed));
-            runHead.SetAnimSprite(new AnimSprite(ssHead) { Color = BodyColor });
-
-            _animatorHead.AddAnimation("Idle", idleHead);
-            _animatorHead.AddAnimation("Tool", toolHead);
-            _animatorHead.AddAnimation("Run", runHead);
-            _animatorHead.AddAnimation("Jump", jumHead);
-
-            //Стоит куртка
-            Animation idleShirt = new Animation("idleShirt") { Position = new Vector2f(0, 22) };
-            idleShirt.SetAnimationFrames(new AnimationFrame(0, _playerAnimationSpeed));
-            idleShirt.SetAnimSprite(new AnimSprite(ssShirt) { Color = ShirtColor });
-
-            //Инстумент куртка
-            Animation toolShirt = new Animation("toolShirt") { Position = new Vector2f(0, 22) };
-            toolShirt.SetAnimationFrames(
-                new AnimationFrame(0, _playerAnimationSpeed),
-                new AnimationFrame(1, _playerAnimationSpeed),
-                new AnimationFrame(2, _playerAnimationSpeed),
-                new AnimationFrame(3, _playerAnimationSpeed),
-                new AnimationFrame(4, _playerAnimationSpeed));
-            toolShirt.SetAnimSprite(new AnimSprite(ssShirt) { Color = ShirtColor });
-
-            //Прыжок куртка
-            Animation jumpShirt = new Animation("jumpShirt") { Position = new Vector2f(0, 22) };
-            jumpShirt.SetAnimationFrames(new AnimationFrame(5, _playerAnimationSpeed));
-            jumpShirt.SetAnimSprite(new AnimSprite(ssShirt) { Color = ShirtColor });
-
-            //Бег куртка
-            Animation runShirt = new Animation("runShirt") { Position = new Vector2f(0, 22) };
-            runShirt.SetAnimationFrames(
-                new AnimationFrame(6, _playerAnimationSpeed),
-                new AnimationFrame(7, _playerAnimationSpeed),
-                new AnimationFrame(8, _playerAnimationSpeed),
-                new AnimationFrame(9, _playerAnimationSpeed),
-                new AnimationFrame(10, _playerAnimationSpeed),
-                new AnimationFrame(11, _playerAnimationSpeed),
-                new AnimationFrame(12, _playerAnimationSpeed),
-                new AnimationFrame(13, _playerAnimationSpeed),
-                new AnimationFrame(14, _playerAnimationSpeed),
-                new AnimationFrame(15, _playerAnimationSpeed),
-                new AnimationFrame(16, _playerAnimationSpeed),
-                new AnimationFrame(17, _playerAnimationSpeed),
-                new AnimationFrame(18, _playerAnimationSpeed),
-                new AnimationFrame(19, _playerAnimationSpeed));
-            runShirt.SetAnimSprite(new AnimSprite(ssShirt) { Color = ShirtColor });
-
-            _animatorShirt.AddAnimation("Idle", idleShirt);
-            _animatorShirt.AddAnimation("Tool", toolShirt);
-            _animatorShirt.AddAnimation("Run", runShirt);
-            _animatorShirt.AddAnimation("Jump", jumpShirt);
-
-            //Стоит рукав
-            Animation idleUndershirt = new Animation("idleUndershirt") { Position = new Vector2f(0, 22) };
-            idleUndershirt.SetAnimationFrames(new AnimationFrame(0, _playerAnimationSpeed));
-            idleUndershirt.SetAnimSprite(new AnimSprite(ssUndershirt));
-
-            //Инстумент куртка
-            Animation toolUndershirt = new Animation("toolUndershirt") { Position = new Vector2f(0, 22) };
-            toolUndershirt.SetAnimationFrames(
-                new AnimationFrame(0, _playerAnimationSpeed),
-                new AnimationFrame(1, _playerAnimationSpeed),
-                new AnimationFrame(2, _playerAnimationSpeed),
-                new AnimationFrame(3, _playerAnimationSpeed),
-                new AnimationFrame(4, _playerAnimationSpeed));
-            toolUndershirt.SetAnimSprite(new AnimSprite(ssUndershirt));
-
-            //Прыжок куртка
-            Animation jumpUndershirt = new Animation("jumpUndershirt") { Position = new Vector2f(0, 22) };
-            jumpUndershirt.SetAnimationFrames(new AnimationFrame(5, _playerAnimationSpeed));
-            jumpUndershirt.SetAnimSprite(new AnimSprite(ssUndershirt));
-
-            //Бег рукава
-            Animation runUndershirt = new Animation("runUndershirt") { Position = new Vector2f(0, 22) };
-            runUndershirt.SetAnimationFrames(
-                new AnimationFrame(6,_playerAnimationSpeed),
-                new AnimationFrame(7,_playerAnimationSpeed),
-                new AnimationFrame(8,_playerAnimationSpeed),
-                new AnimationFrame(9, _playerAnimationSpeed),
-                new AnimationFrame(10,_playerAnimationSpeed),
-                new AnimationFrame(11,_playerAnimationSpeed),
-                new AnimationFrame(12,_playerAnimationSpeed),
-                new AnimationFrame(13,_playerAnimationSpeed),
-                new AnimationFrame(14,_playerAnimationSpeed),
-                new AnimationFrame(15,_playerAnimationSpeed),
-                new AnimationFrame(16,_playerAnimationSpeed),
-                new AnimationFrame(17,_playerAnimationSpeed),
-                new AnimationFrame(18,_playerAnimationSpeed),
-                new AnimationFrame(19, _playerAnimationSpeed));
-            runUndershirt.SetAnimSprite(new AnimSprite(ssUndershirt));
-
-            _animatorUndershirt.AddAnimation("Idle", idleUndershirt);
-            _animatorUndershirt.AddAnimation("Tool", toolUndershirt);
-            _animatorUndershirt.AddAnimation("Run", runUndershirt);
-            _animatorUndershirt.AddAnimation("Jump", jumpUndershirt);
-
-            //Стоит руки
-            Animation idleHands = new Animation("idleHands") { Position = new Vector2f(0, 22) };
-            idleHands.SetAnimationFrames(new AnimationFrame(0, _playerAnimationSpeed));
-            idleHands.SetAnimSprite(new AnimSprite(ssHands) { Color = BodyColor });
-
-            //Инстумент руки
-            Animation toolHands = new Animation("toolHands") { Position = new Vector2f(0, 22) };
-            toolHands.SetAnimationFrames(
-                new AnimationFrame(0, _playerAnimationSpeed),
-                new AnimationFrame(1, _playerAnimationSpeed),
-                new AnimationFrame(2, _playerAnimationSpeed),
-                new AnimationFrame(3, _playerAnimationSpeed),
-                new AnimationFrame(4, _playerAnimationSpeed));
-            toolHands.SetAnimSprite(new AnimSprite(ssHands) { Color = BodyColor });
-
-            //Прыжок руки
-            Animation jumpHands = new Animation("jumpHands") { Position = new Vector2f(0, 22) };
-            jumpHands.SetAnimationFrames(new AnimationFrame(5, _playerAnimationSpeed));
-            jumpHands.SetAnimSprite(new AnimSprite(ssHands) { Color = BodyColor });
-
-            //Бег руки
-            Animation runHands = new Animation("runHands") { Position = new Vector2f(0, 22) };
-            runHands.SetAnimationFrames(
-                new AnimationFrame(6, _playerAnimationSpeed),
-                new AnimationFrame(7, _playerAnimationSpeed),
-                new AnimationFrame(8, _playerAnimationSpeed),
-                new AnimationFrame(9, _playerAnimationSpeed),
-                new AnimationFrame(10, _playerAnimationSpeed),
-                new AnimationFrame(11, _playerAnimationSpeed),
-                new AnimationFrame(12, _playerAnimationSpeed),
-                new AnimationFrame(13, _playerAnimationSpeed),
-                new AnimationFrame(14, _playerAnimationSpeed),
-                new AnimationFrame(15, _playerAnimationSpeed),
-                new AnimationFrame(16, _playerAnimationSpeed),
-                new AnimationFrame(17, _playerAnimationSpeed),
-                new AnimationFrame(18, _playerAnimationSpeed),
-                new AnimationFrame(19, _playerAnimationSpeed));
-            runHands.SetAnimSprite(new AnimSprite(ssHands) { Color = BodyColor });
-
-            _animatorHands.AddAnimation("Idle", idleHands);
-            _animatorHands.AddAnimation("Tool", toolHands);
-            _animatorHands.AddAnimation("Run", runHands);
-            _animatorHands.AddAnimation("Jump", jumpHands);
-
-            //Стоит штаны
-            Animation idlePants = new Animation("idlePants") { Position = new Vector2f(0, 22) };
-            idlePants.SetAnimationFrames(new AnimationFrame(0, _playerAnimationSpeed));
-            idlePants.SetAnimSprite(new AnimSprite(ssPants) { Color = PantsColor });
-
-            //Инстумент штаны
-            Animation toolPants = new Animation("toolPants") { Position = new Vector2f(0, 22) };
-            toolPants.SetAnimationFrames(new AnimationFrame(0, _playerAnimationSpeed));
-            toolPants.SetAnimSprite(new AnimSprite(ssPants) { Color = PantsColor });
-
-            //Прыжок штаны
-            Animation jumpPants = new Animation("jumpPants") { Position = new Vector2f(0, 22) };
-            jumpPants.SetAnimationFrames(new AnimationFrame(5, _playerAnimationSpeed));
-            jumpPants.SetAnimSprite(new AnimSprite(ssPants) { Color = PantsColor });
-
-            //Бег штаны
-            Animation runPants = new Animation("runPants") { Position = new Vector2f(0, 22) };
-            runPants.SetAnimationFrames(
-                new AnimationFrame(6, _playerAnimationSpeed),
-                new AnimationFrame(7, _playerAnimationSpeed),
-                new AnimationFrame(8, _playerAnimationSpeed),
-                new AnimationFrame(9, _playerAnimationSpeed),
-                new AnimationFrame(10, _playerAnimationSpeed),
-                new AnimationFrame(11, _playerAnimationSpeed),
-                new AnimationFrame(12, _playerAnimationSpeed),
-                new AnimationFrame(13, _playerAnimationSpeed),
-                new AnimationFrame(14, _playerAnimationSpeed),
-                new AnimationFrame(15, _playerAnimationSpeed),
-                new AnimationFrame(16, _playerAnimationSpeed),
-                new AnimationFrame(17, _playerAnimationSpeed),
-                new AnimationFrame(18, _playerAnimationSpeed),
-                new AnimationFrame(19, _playerAnimationSpeed));
-            runPants.SetAnimSprite(new AnimSprite(ssPants) { Color = PantsColor });
-
-            _animatorPants.AddAnimation("Idle", idlePants);
-            _animatorPants.AddAnimation("Tool", toolPants);
-            _animatorPants.AddAnimation("Run", runPants);
-            _animatorPants.AddAnimation("Jump", jumpPants);
-
-
-            //Стоит ноги
-            Animation idleShoes = new Animation("idleShoes") { Position = new Vector2f(0, 22) };
-            idleShoes.SetAnimationFrames(new AnimationFrame(0, _playerAnimationSpeed));
-            idleShoes.SetAnimSprite(new AnimSprite(ssShoes));
-
-            //Инстумент ноги
-            Animation toolShoes = new Animation("toolShoes") { Position = new Vector2f(0, 22) };
-            toolShoes.SetAnimationFrames(new AnimationFrame(0, _playerAnimationSpeed));
-            toolShoes.SetAnimSprite(new AnimSprite(ssShoes));
-
-            //Прыжок ноги
-            Animation jumpShoes = new Animation("jumpShoes") { Position = new Vector2f(0, 22) };
-            jumpShoes.SetAnimationFrames(new AnimationFrame(5, _playerAnimationSpeed));
-            jumpShoes.SetAnimSprite(new AnimSprite(ssShoes));
-
-            //Бег ноги
-            Animation runShoes = new Animation("runShoes") { Position = new Vector2f(0, 22) };
-            runShoes.SetAnimationFrames(
-                new AnimationFrame(6, _playerAnimationSpeed),
-                new AnimationFrame(7, _playerAnimationSpeed),
-                new AnimationFrame(8, _playerAnimationSpeed),
-                new AnimationFrame(9, _playerAnimationSpeed),
-                new AnimationFrame(10, _playerAnimationSpeed),
-                new AnimationFrame(11, _playerAnimationSpeed),
-                new AnimationFrame(12, _playerAnimationSpeed),
-                new AnimationFrame(13, _playerAnimationSpeed),
-                new AnimationFrame(14, _playerAnimationSpeed),
-                new AnimationFrame(15, _playerAnimationSpeed),
-                new AnimationFrame(16, _playerAnimationSpeed),
-                new AnimationFrame(17, _playerAnimationSpeed),
-                new AnimationFrame(18, _playerAnimationSpeed),
-                new AnimationFrame(19, _playerAnimationSpeed));
-            runShoes.SetAnimSprite(new AnimSprite(ssShoes));
-
-            _animatorShoes.AddAnimation("Idle", idleShoes);
-            _animatorShoes.AddAnimation("Tool", toolShoes);
-            _animatorShoes.AddAnimation("Run", runShoes);
-            _animatorShoes.AddAnimation("Jump", jumpShoes);
+            // Обувь
+            asShoes = new AnimSprite(ssShoes);
+            asShoes.Position = new Vector2f(0, 19);
+            asShoes.AddAnimation("idle", new Animation(
+                new AnimationFrame(0, 0, 1f)));
+            asShoes.AddAnimation("tool", new Animation(
+                new AnimationFrame(0, 0, 1f)));
+            asShoes.AddAnimation("jump", new Animation(
+                new AnimationFrame(0, 5, 1f)));
+            asShoes.AddAnimation("run", new Animation(
+                new AnimationFrame(0, 6, 0.1f),
+                new AnimationFrame(0, 7, 0.1f),
+                new AnimationFrame(0, 8, 0.1f),
+                new AnimationFrame(0, 9, 0.1f),
+                new AnimationFrame(0, 10, 0.1f),
+                new AnimationFrame(0, 11, 0.1f),
+                new AnimationFrame(0, 12, 0.1f),
+                new AnimationFrame(0, 13, 0.1f),
+                new AnimationFrame(0, 14, 0.1f),
+                new AnimationFrame(0, 15, 0.1f),
+                new AnimationFrame(0, 16, 0.1f),
+                new AnimationFrame(0, 17, 0.1f),
+                new AnimationFrame(0, 18, 0.1f),
+                new AnimationFrame(0, 19, 0.1f)
+            ));
         }
 
         public override void Update(float deltaTime)
         {
+            asUndershirt.Color = Color;
+            asShoes.Color = Color;
+
             MouseUpdate();
             _inventory.Position = new Vector2f(-Game.GetWindowSize().X / 2 * Game.GetZoom(), Game.GetWindowSize().Y - 250) / 4 + Position;
 
@@ -454,13 +363,13 @@ namespace VoxelGame
                         Origin = new Vector2f(rect.Size.X / 2, 0);
                     }
 
-                    _animatorHair.Play("Run");
-                    _animatorHead.Play("Run");
-                    _animatorShirt.Play("Run");
-                    _animatorUndershirt.Play("Run");
-                    _animatorHands.Play("Run");
-                    _animatorPants.Play("Run");
-                    _animatorShoes.Play("Run");
+                    asHead.Play("run");
+                    asHair.Play("run");
+                    asShirt.Play("run");
+                    asUndershirt.Play("run");
+                    asHands.Play("run");
+                    asPants.Play("run");
+                    asShoes.Play("run");
                 }
                 else
                 {
@@ -473,26 +382,26 @@ namespace VoxelGame
                     isFall = true;
                     isJumped = true;
 
-                    _animatorHair.Play("Jump");
-                    _animatorHead.Play("Jump");
-                    _animatorShirt.Play("Jump");
-                    _animatorUndershirt.Play("Jump");
-                    _animatorHands.Play("Jump");
-                    _animatorPants.Play("Jump");
-                    _animatorShoes.Play("Jump");
+                    asHead.Play("jump");
+                    asHair.Play("jump");
+                    asShirt.Play("jump");
+                    asUndershirt.Play("jump");
+                    asHands.Play("jump");
+                    asPants.Play("jump");
+                    asShoes.Play("jump");
                 }
                 else if (!isJump)
                     isJumped = false;
 
                 if(!isMove && !isJump)
                 {
-                    _animatorHair.Play("Idle");
-                    _animatorHead.Play("Idle");
-                    _animatorShirt.Play("Idle");
-                    _animatorUndershirt.Play("Idle");
-                    _animatorHands.Play("Idle");
-                    _animatorPants.Play("Idle");
-                    _animatorShoes.Play("Idle");
+                    asHead.Play("idle");
+                    asHair.Play("idle");
+                    asShirt.Play("idle");
+                    asUndershirt.Play("idle");
+                    asHands.Play("idle");
+                    asPants.Play("idle");
+                    asShoes.Play("idle");
                 }
             }
         }
@@ -526,7 +435,8 @@ namespace VoxelGame
                         if (tile != null)
                         {
                             DebugRender.AddText(mousePos, $"TileType: {tile.Type} \n" +
-                                                          $"Tile Strength: {tile.Strength}");
+                                                          $"Tile Strength: {tile.Strength} \n " +
+                                                          $"Tile perent: {tile.PerentTile}");
                         }
                         else if (wall != null)
                         {
@@ -601,13 +511,13 @@ namespace VoxelGame
 
             states.Transform *= Transform;
 
-            target.Draw(_animatorHead, states);
-            target.Draw(_animatorHair, states);
-            target.Draw(_animatorShirt, states);
-            target.Draw(_animatorUndershirt, states);
-            target.Draw(_animatorHands, states);
-            target.Draw(_animatorPants, states);
-            target.Draw(_animatorShoes, states);
+            target.Draw(asHead, states);
+            target.Draw(asHair, states);
+            target.Draw(asShirt, states);
+            target.Draw(asUndershirt, states);
+            target.Draw(asHands, states);
+            target.Draw(asPants, states);
+            target.Draw(asShoes, states);
         }
     }
 }

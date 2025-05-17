@@ -25,6 +25,7 @@ namespace VoxelGame.Item
         Workbench,
         Stove,
         Chest,
+        Door,
         Torch,
         IronIngot,
         CopperIngot,
@@ -135,6 +136,11 @@ namespace VoxelGame.Item
                 //Печка
                 ItemList.Stove => GetItemTileByTile(TileType.Stove, 1)
                 .SetCrafts(new Craft(1, items, CraftTool.Workbench, new CraftElement(ItemList.Stone, 15)))
+                .SetItem(items),
+
+                //Дверь
+                ItemList.Door => GetItemTileByTile(TileType.Door)
+                .SetCrafts(new Craft(1, items, CraftTool.Workbench, new CraftElement(ItemList.OakBoard, 6)))
                 .SetItem(items),
 
                 //Факел

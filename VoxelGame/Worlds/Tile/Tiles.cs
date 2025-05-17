@@ -20,6 +20,7 @@ namespace VoxelGame.Worlds.Tile
                 TileType.Workbench => new TileWorkbench(tileType, ItemList.Workbench, ItemType.Axe, 1, 3, false, perentChunk, upTile, downTile, leftTile, rightTile, wall, localPosition),
                 TileType.Stove => new TileStove(tileType, ItemList.Stove, ItemType.Pickaxe, 1, 3, false, perentChunk, upTile, downTile, leftTile, rightTile, wall, localPosition),
                 TileType.Vegetation => new TileVegetation(tileType, ItemList.None, ItemType.All, 1, 1, false, perentChunk, upTile, downTile, leftTile, rightTile, wall, localPosition),
+                TileType.Door => new TileDoor(tileType, ItemList.Door, ItemType.Axe, 1, 2, false, perentChunk, upTile, downTile, leftTile, rightTile, wall, localPosition),
                 _ => throw new Exception($"Tile type is not found. {tileType}")
             };
 

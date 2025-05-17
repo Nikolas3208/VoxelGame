@@ -172,6 +172,8 @@ namespace VoxelGame.Worlds.Tile
         /// </summary>
         public Vector2f Size { get; set; }
 
+        public string TextureName { get; set; } 
+
         /// <summary>
         /// Плитка
         /// </summary>
@@ -194,6 +196,8 @@ namespace VoxelGame.Worlds.Tile
             PerentChunk = perentChunk;
 
             _vertices = new Vertex[6];
+
+            TextureName = type.ToString();
 
             // Присваиваем соседей, а соседям эту плитку
             if (upTile != null)

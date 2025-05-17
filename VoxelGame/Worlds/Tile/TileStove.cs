@@ -13,6 +13,7 @@ namespace VoxelGame.Worlds.Tile
             : base(type, dropItem, requiredTool, reqiuredToolPower, strength, isSolid,
                   perentChunk, upTile, downTile, leftTile, rightTile, wall, localPosition)
         {
+            Size = new Vector2f(3, 2);
         }
 
         public override void UpdateView()

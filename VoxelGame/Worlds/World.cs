@@ -2,6 +2,7 @@
 using SFML.System;
 using VoxelGame.Item;
 using VoxelGame.Physics;
+using VoxelGame.Resources;
 using VoxelGame.Worlds.Tile;
 
 namespace VoxelGame.Worlds
@@ -48,12 +49,16 @@ namespace VoxelGame.Worlds
         /// </summary>
         private List<DropItem> _dropItems;
 
+        private Player _player;
+
         /// <summary>
         /// Средння высота мира
         /// </summary>
         public float BaseHeight { get; set; } = 50;
 
         public static Random Random { get; set; }
+
+        public RectangleShape BackgroundRect { get; set; }
 
         /// <summary>
         /// Мир
@@ -74,7 +79,13 @@ namespace VoxelGame.Worlds
             _entities = new List<Entity>();
             _dropItems = new List<DropItem>();
 
-            _entities.Add(new Player(this, new AABB(28, 46)) { Position = new Vector2f(height * Tile.Tile.TileSize / 2, 0) });
+            BackgroundRect = new RectangleShape((Vector2f)Game.GetWindowSize() + new Vector2f(100, 100));
+            BackgroundRect.Texture = AssetManager.GetTexture("Background_0");
+            BackgroundRect.Origin = BackgroundRect.Size / 2;
+
+            _player = new Player(this, new AABB(28, 46)) { Position = new Vector2f(height * Tile.Tile.TileSize / 2, 0) };
+
+            _entities.Add(_player);
         }
 
         /// <summary>
@@ -137,7 +148,7 @@ namespace VoxelGame.Worlds
         }
 
         object lockes = new object();
-        float timeOfDay = 0.5f; // 0.0 — полночь, 0.5 — полдень, 1.0 — снова полночь
+        float timeOfDay = 0.8f; // 0.0 — полночь, 0.5 — полдень, 1.0 — снова полночь
         float timeSpeed = 0.001f; // скорость времени
 
         /// <summary>
@@ -148,6 +159,9 @@ namespace VoxelGame.Worlds
         {
             timeOfDay += timeSpeed * deltaTime;
             if (timeOfDay > 1f) timeOfDay -= 1f;
+
+            BackgroundRect.Position = _player.Position;
+            BackgroundRect.FillColor = Light.BaseColor;
 
             drawbleChunk = new List<Chunk>();
             var tilePos = (Game.GetCameraPosition().X / Chunk.ChunkSize / Tile.Tile.TileSize, Game.GetCameraPosition().Y / Chunk.ChunkSize / Tile.Tile.TileSize);
@@ -186,7 +200,10 @@ namespace VoxelGame.Worlds
                     var entity = _entities[i];
 
                     if (entity != null)
+                    {
+                        entity.Color = Light.BaseColor;
                         entity.Update(deltaTime);
+                    }
                 }
             }
 
@@ -215,9 +232,12 @@ namespace VoxelGame.Worlds
         /// <param name="states"></param>
         public void Draw(RenderTarget target, RenderStates states)
         {
+
             states.Transform *= Transform;
 
             Light.CalculateGlobalLight(timeOfDay);
+
+            target.Draw(BackgroundRect, states);
 
             for (int i = 0; i < drawbleChunk.Count; i++)
             {
