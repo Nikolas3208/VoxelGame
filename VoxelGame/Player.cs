@@ -1,7 +1,8 @@
 ﻿using SFML.Graphics;
 using SFML.System;
 using SFML.Window;
-using VoxelGame.Graphics;
+using VoxelGame.Entitys;
+using VoxelGame.Graphics.Animations;
 using VoxelGame.Item;
 using VoxelGame.Meths;
 using VoxelGame.Physics;
@@ -13,274 +14,473 @@ using VoxelGame.Worlds.Tile;
 
 namespace VoxelGame
 {
-    public class Player : Entity
+    /// <summary>
+    /// Перечисление возможных анимаций игрока.
+    /// </summary>
+    public enum PlayerAnim
     {
+        /// <summary>
+        /// Анимация ожидания (статическое состояние игрока).
+        /// </summary>
+        Idle,   // Ожидание
 
+        /// <summary>
+        /// Анимация бега (движение игрока).
+        /// </summary>
+        Run,    // Бег
+
+        /// <summary>
+        /// Анимация прыжка (игрок в воздухе).
+        /// </summary>
+        Jump,   // Прыжок
+
+        /// <summary>
+        /// Анимация использования инструмента (например, кирки или молота).
+        /// </summary>
+        Tool    // Использование инструмента
+    }
+
+    /// <summary>
+    /// Класс, реализующий игрового персонажа-игрока.
+    /// Управляет состоянием, анимациями, инвентарём, взаимодействием с миром и предметами.
+    /// </summary>
+    public class Player : Npc
+    {
+        /// <summary>
+        /// Максимальная скорость передвижения игрока.
+        /// </summary>
         private float maxSpeed = 100;
+
+        /// <summary>
+        /// Флаг, совершён ли прыжок.
+        /// </summary>
         private bool isJumped = false;
+
+        /// <summary>
+        /// Флаг, открыт ли инвентарь.
+        /// </summary>
         private bool _inventoryOpened = false;
+
+        /// <summary>
+        /// UI-инвентарь игрока.
+        /// </summary>
         private UIInventory _inventory;
+
+        
+        ///<summary>  
+        /// Ссылка на сундук, с которым взаимодействует игрок.  
+        /// Используется для открытия инвентаря сундука и взаимодействия с его содержимым.  
+        /// </summary>  
+        private TileChest? _chest;
+
+        /// <summary>
+        /// Текущий выбранный предмет в инвентаре.
+        /// </summary>
         private Item.Item? _selectedItem;
-        private float _playerAnimationSpeed = 0.1f;
 
-        // Спрайты с анимацией
-        private AnimSprite asHair;         // Волосы
-        private AnimSprite asHead;         // Голова
-        private AnimSprite asShirt;        // Рубашка
-        private AnimSprite asUndershirt;   // Рукава
-        private AnimSprite asHands;        // Кисти
-        private AnimSprite asPants;         // Ноги
-        private AnimSprite asShoes;        // Обувь
+        /// <summary>
+        /// Скорость анимации игрока (обычная).
+        /// </summary>
+        private float _playerAnimationSpeed = 0.2f;
 
+        /// <summary>
+        /// Скорость анимации при использовании инструмента.
+        /// </summary>
+        private float _playerAnimationSpeedTool = 4.3f;
+
+        /// <summary>
+        /// Сущность выпавшего предмета (если есть).
+        /// </summary>
+        private DropItem _itemEntity;
+
+        /// <summary>
+        /// Смещение анимации относительно базовой позиции.
+        /// </summary>
+        private Vector2f _animOffset = new Vector2f(0, 19);
+
+        /// <summary>
+        /// Стартовая позиция игрока.
+        /// </summary>
+        public Vector2f StartPosition = new Vector2f(0, 0);
+
+        /// <summary>
+        /// Текст для отображения таймера (например, при смерти).
+        /// </summary>
+        private Text _timerText;
+
+        /// <summary>
+        /// Индекс выбранной ячейки инвентаря.
+        /// </summary>
+        private int _selectedCellIndex = 0;
+
+        /// <summary>
+        /// Аниматор для управления анимациями игрока.
+        /// </summary>
+        private Animator _playerAnimator;
+
+        /// <summary>
+        /// Скорость разрушения блоков выбранным инструментом.
+        /// </summary>
         private float breakingSpeed = 1f;
 
-        public Color HairColor = new Color(0, 240, 10);  // Цвет волос
-        public Color BodyColor = new Color(255, 229, 186);  // Цвет кожи
-        public Color ShirtColor = new Color(255, 255, 0);  // Цвет куртки
-        public Color PantsColor = new Color(0, 76, 135);  // Цвет штанов
+        /// <summary>
+        /// Цвет волос игрока.
+        /// </summary>
+        public static Color HairColor = new Color(0, 240, 10);
 
+        /// <summary>
+        /// Цвет кожи игрока.
+        /// </summary>
+        public static Color BodyColor = new Color(255, 229, 186);
+
+        /// <summary>
+        /// Цвет рубашки игрока.
+        /// </summary>
+        public static Color ShirtColor = new Color(255, 255, 0);
+
+        /// <summary>
+        /// Цвет штанов игрока.
+        /// </summary>
+        public static Color PantsColor = new Color(0, 76, 135);
+
+        /// <summary>
+        /// Список доступных инструментов для крафта рядом с игроком.
+        /// </summary>
         public List<CraftTool> CraftTools { get; set; }
 
-        public Player(World world, AABB aabb) : base(world, aabb)
+        /// <summary>
+        /// Конструктор игрока.
+        /// </summary>
+        /// <param name="world">Мир, в котором находится игрок.</param>
+        /// <param name="aabb">Коллайдер игрока.</param>
+        public Player(World world, AABB aabb) : base(world, aabb, NpcType.Friendly)
         {
             _inventory = new UIInventory(new Vector2f(UIInventoryCell.CellSize * 10, UIInventoryCell.CellSize));
             _inventory.Player = this;
 
+            _playerAnimator = new Animator();
+
+            hitSoundName = "Player_Hit_";
+            killSoundName = "Player_Killed_";
+
+            NpcType = NpcType.Player;
+
+            _timerText = new Text(" ", TextureManager.GetFont("Arial"));
+
             UIManager.AddWindow(_inventory);
 
+            // Добавление стартовых предметов в инвентарь
             _inventory.AddItem(Items.GetItem(ItemList.CopperPickaxe), 1);
             _inventory.AddItem(Items.GetItem(ItemList.CopperAxe), 1);
+            _inventory.AddItem(Items.GetItem(ItemList.CopperSword), 1);
             _inventory.AddItem(Items.GetItem(ItemList.Stove), 1);
             _inventory.AddItem(Items.GetItem(ItemList.OakBoard), 64);
             _inventory.AddItem(Items.GetItem(ItemList.OakBoardWall), 64);
             _inventory.AddItem(Items.GetItem(ItemList.Torch), 64);
-            _inventory.AddItem(Items.GetItem(ItemList.Door), 2);
+            _inventory.AddItem(Items.GetItem(ItemList.IronIngot), 64);
+            _inventory.AddItem(Items.GetItem(ItemList.CopperIngot), 64);
+            _inventory.AddItem(Items.GetItem(ItemList.Chest), 64);
 
             CraftTools = new List<CraftTool>();
 
             Origin = new Vector2f(-rect.Size.X / 2, 0);
             Visible = false;
 
+            // Подписка на событие прокрутки колеса мыши для смены выбранной ячейки инвентаря
+            Game.Window.MouseWheelScrolled += GameWindow_MouseWheelScrolled;
+
             CreateAnimation();
         }
 
-        public void CreateAnimation()
+        /// <summary>
+        /// Обработка прокрутки колеса мыши для смены выбранной ячейки инвентаря.
+        /// </summary>
+        private void GameWindow_MouseWheelScrolled(object? sender, MouseWheelScrollEventArgs e)
         {
-            var ssHair = AssetManager.GetSpriteSheet("Player_Hair_1", 1, 14, true, 0);
-            var ssHead = AssetManager.GetSpriteSheet("Player_Head", 1, 20, true, 0);
-            var ssShirt = AssetManager.GetSpriteSheet("Player_Shirt", 1, 20, true, 0);
-            var ssUndershirt = AssetManager.GetSpriteSheet("Player_Undershirt", 1, 20, true, 0);
-            var ssHands = AssetManager.GetSpriteSheet("Player_Hands", 1, 20, true, 0);
-            var ssPants = AssetManager.GetSpriteSheet("Player_Pants", 1, 20, true, 0);
-            var ssShoes = AssetManager.GetSpriteSheet("Player_Shoes", 1, 20, true, 0);
+            _selectedCellIndex += (int)e.Delta;
 
-            // Волосы
-            asHair = new AnimSprite(ssHair);
-            asHair.Position = new Vector2f(0, 19);
-            asHair.Color = HairColor;
-            asHair.AddAnimation("idle", new Animation(
-                new AnimationFrame(0, 0, 0.1f)));
-            asHair.AddAnimation("tool", new Animation(
-                new AnimationFrame(0, 0, 1f)));
-            asHair.AddAnimation("jump", new Animation(
-                new AnimationFrame(0, 5, 0.1f)));
-            asHair.AddAnimation("run", new Animation(
-                new AnimationFrame(0, 0, 0.1f),
-                new AnimationFrame(0, 1, 0.1f),
-                new AnimationFrame(0, 2, 0.1f),
-                new AnimationFrame(0, 3, 0.1f),
-                new AnimationFrame(0, 4, 0.1f),
-                new AnimationFrame(0, 5, 0.1f),
-                new AnimationFrame(0, 6, 0.1f),
-                new AnimationFrame(0, 7, 0.1f),
-                new AnimationFrame(0, 8, 0.1f),
-                new AnimationFrame(0, 9, 0.1f),
-                new AnimationFrame(0, 10, 0.1f),
-                new AnimationFrame(0, 11, 0.1f),
-                new AnimationFrame(0, 12, 0.1f),
-                new AnimationFrame(0, 13, 0.1f)
-            ));
+            if (_selectedCellIndex < 0)
+                _selectedCellIndex = 9;
+            else if (_selectedCellIndex > 9)
+                _selectedCellIndex = 0;
 
-            // Голова
-            asHead = new AnimSprite(ssHead);
-            asHead.Position = new Vector2f(0, 19);
-            asHead.Color = BodyColor;
-            asHead.AddAnimation("idle", new Animation(
-                new AnimationFrame(0, 0, 0.1f)));
-            asHead.AddAnimation("tool", new Animation(
-                new AnimationFrame(0, 0, 1f)));
-            asHead.AddAnimation("jump", new Animation(
-                new AnimationFrame(0, 5, 0.1f)));
-            asHead.AddAnimation("run", new Animation(
-                new AnimationFrame(0, 6, 0.1f),
-                new AnimationFrame(0, 7, 0.1f),
-                new AnimationFrame(0, 8, 0.1f),
-                new AnimationFrame(0, 9, 0.1f),
-                new AnimationFrame(0, 10, 0.1f),
-                new AnimationFrame(0, 11, 0.1f),
-                new AnimationFrame(0, 12, 0.1f),
-                new AnimationFrame(0, 13, 0.1f),
-                new AnimationFrame(0, 14, 0.1f),
-                new AnimationFrame(0, 15, 0.1f),
-                new AnimationFrame(0, 16, 0.1f),
-                new AnimationFrame(0, 17, 0.1f),
-                new AnimationFrame(0, 18, 0.1f),
-                new AnimationFrame(0, 19, 0.1f)
-            ));
-
-            // Рубашка
-            asShirt = new AnimSprite(ssShirt);
-            asShirt.Position = new Vector2f(0, 19);
-            asShirt.Color = ShirtColor;
-            asShirt.AddAnimation("idle", new Animation(
-                new AnimationFrame(0, 0, 0.1f)));
-            asShirt.AddAnimation("tool", new Animation(
-                new AnimationFrame(0, 0, 0.5f),
-                new AnimationFrame(0, 1, 0.5f),
-                new AnimationFrame(0, 2, 0.5f),
-                new AnimationFrame(0, 3, 0.5f),
-                new AnimationFrame(0, 4, 0.5f)));
-            asShirt.AddAnimation("jump", new Animation(
-                new AnimationFrame(0, 5, 0.1f)));
-            asShirt.AddAnimation("run", new Animation(
-                new AnimationFrame(0, 6, 0.1f),
-                new AnimationFrame(0, 7, 0.1f),
-                new AnimationFrame(0, 8, 0.1f),
-                new AnimationFrame(0, 9, 0.1f),
-                new AnimationFrame(0, 10, 0.1f),
-                new AnimationFrame(0, 11, 0.1f),
-                new AnimationFrame(0, 12, 0.1f),
-                new AnimationFrame(0, 13, 0.1f),
-                new AnimationFrame(0, 14, 0.1f),
-                new AnimationFrame(0, 15, 0.1f),
-                new AnimationFrame(0, 16, 0.1f),
-                new AnimationFrame(0, 17, 0.1f),
-                new AnimationFrame(0, 18, 0.1f),
-                new AnimationFrame(0, 19, 0.1f)
-            ));
-
-            // Рукава
-            asUndershirt = new AnimSprite(ssUndershirt);
-            asUndershirt.Position = new Vector2f(0, 19);
-            asUndershirt.AddAnimation("idle", new Animation(
-                new AnimationFrame(0, 0, 1f)));
-            asUndershirt.AddAnimation("tool", new Animation(
-                new AnimationFrame(0, 0, 0.5f),
-                new AnimationFrame(0, 1, 0.5f),
-                new AnimationFrame(0, 2, 0.5f),
-                new AnimationFrame(0, 3, 0.5f),
-                new AnimationFrame(0, 4, 0.5f)));
-            asUndershirt.AddAnimation("jump", new Animation(
-                new AnimationFrame(0, 5, 0.1f)));
-            asUndershirt.AddAnimation("run", new Animation(
-                new AnimationFrame(0, 6, 0.1f),
-                new AnimationFrame(0, 7, 0.1f),
-                new AnimationFrame(0, 8, 0.1f),
-                new AnimationFrame(0, 9, 0.1f),
-                new AnimationFrame(0, 10, 0.1f),
-                new AnimationFrame(0, 11, 0.1f),
-                new AnimationFrame(0, 12, 0.1f),
-                new AnimationFrame(0, 13, 0.1f),
-                new AnimationFrame(0, 14, 0.1f),
-                new AnimationFrame(0, 15, 0.1f),
-                new AnimationFrame(0, 16, 0.1f),
-                new AnimationFrame(0, 17, 0.1f),
-                new AnimationFrame(0, 18, 0.1f),
-                new AnimationFrame(0, 19, 0.1f)
-            ));
-
-            // Кисти
-            asHands = new AnimSprite(ssHands);
-            asHands.Position = new Vector2f(0, 19);
-            asHands.Color = BodyColor;
-            asHands.AddAnimation("idle", new Animation(
-                new AnimationFrame(0, 0, 0.1f)));
-            asHands.AddAnimation("tool", new Animation(
-                new AnimationFrame(0, 0, 0.5f),
-                new AnimationFrame(0, 1, 0.5f),
-                new AnimationFrame(0, 2, 0.5f),
-                new AnimationFrame(0, 3, 0.5f),
-                new AnimationFrame(0, 4, 0.5f)));
-            asHands.AddAnimation("jump", new Animation(
-                new AnimationFrame(0, 5, 0.1f)));
-            asHands.AddAnimation("run", new Animation(
-                new AnimationFrame(0, 6, 0.1f),
-                new AnimationFrame(0, 7, 0.1f),
-                new AnimationFrame(0, 8, 0.1f),
-                new AnimationFrame(0, 9, 0.1f),
-                new AnimationFrame(0, 10, 0.1f),
-                new AnimationFrame(0, 11, 0.1f),
-                new AnimationFrame(0, 12, 0.1f),
-                new AnimationFrame(0, 13, 0.1f),
-                new AnimationFrame(0, 14, 0.1f),
-                new AnimationFrame(0, 15, 0.1f),
-                new AnimationFrame(0, 16, 0.1f),
-                new AnimationFrame(0, 17, 0.1f),
-                new AnimationFrame(0, 18, 0.1f),
-                new AnimationFrame(0, 19, 0.1f)
-            ));
-
-            // Ноги
-            asPants = new AnimSprite(ssPants);
-            asPants.Color = PantsColor;
-            asPants.Position = new Vector2f(0, 19);
-            asPants.AddAnimation("idle", new Animation(
-                new AnimationFrame(0, 0, 0.1f)));
-            asPants.AddAnimation("tool", new Animation(
-                new AnimationFrame(0, 0, 0.1f)));
-            asPants.AddAnimation("jump", new Animation(
-                new AnimationFrame(0, 5, 0.1f)));
-            asPants.AddAnimation("run", new Animation(
-                new AnimationFrame(0, 6, 0.1f),
-                new AnimationFrame(0, 7, 0.1f),
-                new AnimationFrame(0, 8, 0.1f),
-                new AnimationFrame(0, 9, 0.1f),
-                new AnimationFrame(0, 10, 0.1f),
-                new AnimationFrame(0, 11, 0.1f),
-                new AnimationFrame(0, 12, 0.1f),
-                new AnimationFrame(0, 13, 0.1f),
-                new AnimationFrame(0, 14, 0.1f),
-                new AnimationFrame(0, 15, 0.1f),
-                new AnimationFrame(0, 16, 0.1f),
-                new AnimationFrame(0, 17, 0.1f),
-                new AnimationFrame(0, 18, 0.1f),
-                new AnimationFrame(0, 19, 0.1f)
-            ));
-
-            // Обувь
-            asShoes = new AnimSprite(ssShoes);
-            asShoes.Position = new Vector2f(0, 19);
-            asShoes.AddAnimation("idle", new Animation(
-                new AnimationFrame(0, 0, 1f)));
-            asShoes.AddAnimation("tool", new Animation(
-                new AnimationFrame(0, 0, 1f)));
-            asShoes.AddAnimation("jump", new Animation(
-                new AnimationFrame(0, 5, 1f)));
-            asShoes.AddAnimation("run", new Animation(
-                new AnimationFrame(0, 6, 0.1f),
-                new AnimationFrame(0, 7, 0.1f),
-                new AnimationFrame(0, 8, 0.1f),
-                new AnimationFrame(0, 9, 0.1f),
-                new AnimationFrame(0, 10, 0.1f),
-                new AnimationFrame(0, 11, 0.1f),
-                new AnimationFrame(0, 12, 0.1f),
-                new AnimationFrame(0, 13, 0.1f),
-                new AnimationFrame(0, 14, 0.1f),
-                new AnimationFrame(0, 15, 0.1f),
-                new AnimationFrame(0, 16, 0.1f),
-                new AnimationFrame(0, 17, 0.1f),
-                new AnimationFrame(0, 18, 0.1f),
-                new AnimationFrame(0, 19, 0.1f)
-            ));
+            _inventory.SetSelectedCell(_selectedCellIndex);
         }
 
+        /// <summary>
+        /// Создание и настройка анимаций для всех частей тела игрока.
+        /// </summary>
+        public void CreateAnimation()
+        {
+            var ssHair = TextureManager.GetSpriteSheet("Player_Hair_1", 1, 14, true, 0);
+            var ssHead = TextureManager.GetSpriteSheet("Player_Head", 1, 20, true, 0);
+            var ssShirt = TextureManager.GetSpriteSheet("Player_Shirt", 1, 20, true, 0);
+            var ssUndershirt = TextureManager.GetSpriteSheet("Player_Undershirt", 1, 20, true, 0);
+            var ssHands = TextureManager.GetSpriteSheet("Player_Hands", 1, 20, true, 0);
+            var ssPants = TextureManager.GetSpriteSheet("Player_Pants", 1, 20, true, 0);
+            var ssShoes = TextureManager.GetSpriteSheet("Player_Shoes", 1, 20, true, 0);
+
+            _playerAnimator.AddAnimation("Idle",
+                new Animation(ssHead, AnimationType.Default,
+                    new AnimationFrame(0, 0, _playerAnimationSpeed, position: _animOffset, color: BodyColor)),
+                new Animation(ssHair, AnimationType.Default,
+                    new AnimationFrame(0, 0, _playerAnimationSpeed, position: _animOffset, color: HairColor)),
+                new Animation(ssShirt, AnimationType.Default,
+                    new AnimationFrame(0, 0, _playerAnimationSpeed, position: _animOffset, color: ShirtColor)),
+                new Animation(ssUndershirt, AnimationType.Default,
+                    new AnimationFrame(0, 0, _playerAnimationSpeed, position: _animOffset)),
+                new Animation(ssHands, AnimationType.Default,
+                    new AnimationFrame(0, 0, _playerAnimationSpeed, position: _animOffset, color: BodyColor)),
+                new Animation(ssPants, AnimationType.Default,
+                    new AnimationFrame(0, 0, _playerAnimationSpeed, position: _animOffset, color: PantsColor)),
+                new Animation(ssShoes, AnimationType.Default,
+                    new AnimationFrame(0, 0, _playerAnimationSpeed, position: _animOffset)));
+
+            // Волосы
+            //asHair = new AnimSprite(ssHair);
+            //asHair.BasePosition = _animOffset;
+            //asHair.Color = HairColor;
+            //asHair.AddAnimation("Idle", new Animation(
+            //    new AnimationFrame(0, 0, _playerAnimationSpeed)));
+            //asHair.AddAnimation("Tool", new Animation(
+            //    new AnimationFrame(0, 0, _playerAnimationSpeedTool)));
+            //asHair.AddAnimation("Jump", new Animation(
+            //    new AnimationFrame(0, 5, _playerAnimationSpeed)));
+            //asHair.AddAnimation("Run", new Animation(
+            //    new AnimationFrame(0, 0, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 1, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 2, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 3, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 4, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 5, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 6, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 7, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 8, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 9, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 10, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 11, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 12, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 13, _playerAnimationSpeed)
+            //));
+
+            //// Голова
+            //asHead = new AnimSprite(ssHead);
+            //asHead.BasePosition = _animOffset;
+            //asHead.Color = BodyColor;
+            //asHead.AddAnimation("Idle", new Animation(
+            //    new AnimationFrame(0, 0, _playerAnimationSpeed)));
+            //asHead.AddAnimation("Tool", new Animation(
+            //    new AnimationFrame(0, 0, _playerAnimationSpeedTool)));
+            //asHead.AddAnimation("Jump", new Animation(
+            //    new AnimationFrame(0, 5, _playerAnimationSpeed)));
+            //asHead.AddAnimation("Run", new Animation(
+            //    new AnimationFrame(0, 6, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 7, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 8, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 9, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 10, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 11, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 12, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 13, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 14, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 15, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 16, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 17, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 18, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 19, _playerAnimationSpeed)
+            //));
+
+            //// Рубашка
+            //asShirt = new AnimSprite(ssShirt);
+            //asShirt.BasePosition = _animOffset;
+            //asShirt.Color = ShirtColor;
+            //asShirt.AddAnimation("Idle", new Animation(
+            //    new AnimationFrame(0, 0, _playerAnimationSpeed)));
+            //asShirt.AddAnimation("Tool", new Animation(
+            //    new AnimationFrame(0, 0, _playerAnimationSpeedTool),
+            //    new AnimationFrame(0, 1, _playerAnimationSpeedTool),
+            //    new AnimationFrame(0, 2, _playerAnimationSpeedTool),
+            //    new AnimationFrame(0, 3, _playerAnimationSpeedTool),
+            //    new AnimationFrame(0, 4, _playerAnimationSpeedTool)));
+            //asShirt.AddAnimation("Jump", new Animation(
+            //    new AnimationFrame(0, 5, _playerAnimationSpeed)));
+            //asShirt.AddAnimation("Run", new Animation(
+            //    new AnimationFrame(0, 6, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 7, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 8, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 9, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 10, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 11, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 12, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 13, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 14, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 15, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 16, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 17, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 18, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 19, _playerAnimationSpeed)
+            //));
+
+            //// Рукава
+            //asUndershirt = new AnimSprite(ssUndershirt);
+            //asUndershirt.BasePosition = _animOffset;
+            //asUndershirt.AddAnimation("Idle", new Animation(
+            //    new AnimationFrame(0, 0, _playerAnimationSpeed)));
+            //asUndershirt.AddAnimation("Tool", new Animation(
+            //    new AnimationFrame(0, 0, _playerAnimationSpeedTool),
+            //    new AnimationFrame(0, 1, _playerAnimationSpeedTool),
+            //    new AnimationFrame(0, 2, _playerAnimationSpeedTool),
+            //    new AnimationFrame(0, 3, _playerAnimationSpeedTool),
+            //    new AnimationFrame(0, 4, _playerAnimationSpeedTool)));
+            //asUndershirt.AddAnimation("Jump", new Animation(
+            //    new AnimationFrame(0, 5, _playerAnimationSpeed)));
+            //asUndershirt.AddAnimation("Run", new Animation(
+            //    new AnimationFrame(0, 6, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 7, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 8, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 9, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 10, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 11, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 12, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 13, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 14, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 15, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 16, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 17, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 18, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 19, _playerAnimationSpeed)
+            //));
+
+            //// Кисти
+            //asHands = new AnimSprite(ssHands);
+            //asHands.BasePosition = _animOffset;
+            //asHands.Color = BodyColor;
+            //asHands.AddAnimation("Idle", new Animation(
+            //    new AnimationFrame(0, 0, _playerAnimationSpeed)));
+            //asHands.AddAnimation("Tool", new Animation(
+            //    new AnimationFrame(0, 0, _playerAnimationSpeedTool),
+            //    new AnimationFrame(0, 1, _playerAnimationSpeedTool),
+            //    new AnimationFrame(0, 2, _playerAnimationSpeedTool),
+            //    new AnimationFrame(0, 3, _playerAnimationSpeedTool),
+            //    new AnimationFrame(0, 4, _playerAnimationSpeedTool)));
+            //asHands.AddAnimation("Jump", new Animation(
+            //    new AnimationFrame(0, 5, _playerAnimationSpeed)));
+            //asHands.AddAnimation("Run", new Animation(
+            //    new AnimationFrame(0, 6, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 7, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 8, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 9, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 10, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 11, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 12, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 13, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 14, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 15, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 16, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 17, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 18, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 19, _playerAnimationSpeed)
+            //));
+
+            //// Ноги
+            //asPants = new AnimSprite(ssPants);
+            //asPants.Color = PantsColor;
+            //asPants.BasePosition = _animOffset;
+            //asPants.AddAnimation("Idle", new Animation(
+            //    new AnimationFrame(0, 0, _playerAnimationSpeed)));
+            //asPants.AddAnimation("Tool", new Animation(
+            //    new AnimationFrame(0, 0, _playerAnimationSpeedTool)));
+            //asPants.AddAnimation("Jump", new Animation(
+            //    new AnimationFrame(0, 5, _playerAnimationSpeed)));
+            //asPants.AddAnimation("Run", new Animation(
+            //    new AnimationFrame(0, 6, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 7, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 8, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 9, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 10, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 11, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 12, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 13, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 14, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 15, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 16, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 17, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 18, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 19, _playerAnimationSpeed)
+            //));
+
+            //// Обувь
+            //asShoes = new AnimSprite(ssShoes);
+            //asShoes.BasePosition = _animOffset;
+            //asShoes.AddAnimation("Idle", new Animation(
+            //    new AnimationFrame(0, 0, _playerAnimationSpeed)));
+            //asShoes.AddAnimation("Tool", new Animation(
+            //    new AnimationFrame(0, 0, _playerAnimationSpeedTool)));
+            //asShoes.AddAnimation("Jump", new Animation(
+            //    new AnimationFrame(0, 5, _playerAnimationSpeed)));
+            //asShoes.AddAnimation("Run", new Animation(
+            //    new AnimationFrame(0, 6, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 7, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 8, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 9, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 10, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 11, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 12, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 13, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 14, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 15, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 16, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 17, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 18, _playerAnimationSpeed),
+            //    new AnimationFrame(0, 19, _playerAnimationSpeed)
+            //));
+        }
+
+        /// <summary>
+        /// Таймер для отсчёта времени после смерти игрока.
+        /// </summary>
+        float timer = 0;
+        /// <summary>
+        /// Время до возрождения после смерти.
+        /// </summary>
+        float startTime = 12;
+
+        /// <summary>
+        /// Основной метод обновления состояния игрока.
+        /// </summary>
+        /// <param name="deltaTime">Время между кадрами.</param>
         public override void Update(float deltaTime)
         {
-            asUndershirt.Color = Color;
-            asShoes.Color = Color;
+            if(Kill)
+            {
+                timer += 1;
+
+                if(timer >= 60)
+                {
+                    startTime -= 1;
+                    timer = 0;
+                }
+                if(startTime <= 0)
+                {
+                    Position = StartPosition;
+                    Kill = false;
+                    Health = MaxHealth;
+                    UIManager.AddWindow(_inventory);
+                }
+
+                _timerText.DisplayedString = startTime.ToString();
+                _timerText.FillColor = Color.Red;
+                _timerText.Position = Position;
+
+                return;
+            }
+
+            base.Update(deltaTime);
+            _playerAnimator.Update(deltaTime);
 
             MouseUpdate();
-            _inventory.Position = new Vector2f(-Game.GetWindowSize().X / 2 * Game.GetZoom(), Game.GetWindowSize().Y - 250) / 4 + Position;
+
+            //_inventory.Position = -Game.GetWindowSizeWithZoom() / 2;
 
             var chunk = world.GetChunkByWorldPosition(Position);
 
@@ -308,6 +508,7 @@ namespace VoxelGame
                 if (Keyboard.IsKeyPressed((Keyboard.Key)i + 27))
                 {
                     _inventory.SetSelectedCell(i);
+                    _selectedCellIndex = i;
                 }
             }
 
@@ -317,7 +518,11 @@ namespace VoxelGame
             if (Keyboard.IsKeyPressed(Keyboard.Key.E) && !_inventoryOpened)
             {
                 if (_inventory.IsFullInventoryVisible)
+                {
                     _inventory.HideInventory();
+
+                    UIManager.RemoveWindow(_chest?.GetInventory()!);
+                }
                 else
                     _inventory.ShowInventory();
 
@@ -326,9 +531,22 @@ namespace VoxelGame
             else if (!Keyboard.IsKeyPressed(Keyboard.Key.E))
             {
                 _inventoryOpened = false;
+
+            }
+
+            if (_chest != null)
+            {
+                if (MathHelper.Distance(Position, _chest.GlobalPosition) > 6 * Tile.TileSize)
+                {
+                    UIManager.RemoveWindow(_chest?.GetInventory()!);
+                }
             }
 
             _selectedItem = _inventory.GetItemWithSelectedCell();
+
+            if (_selectedItem != null && _selectedItem.ItemList == ItemList.Torch)
+                world.AddLight(Position + _animOffset);
+
             {
                 bool isRightMove = Keyboard.IsKeyPressed(Keyboard.Key.D);
                 bool isLeftMove = Keyboard.IsKeyPressed(Keyboard.Key.A);
@@ -354,6 +572,8 @@ namespace VoxelGame
 
                         Scale = new Vector2f(1, 1);
                         Origin = new Vector2f(-rect.Size.X / 2, 0);
+                        if(_itemEntity != null)
+                            _itemEntity.Scale = new Vector2f(1, 1);
                     }
                     else if (isLeftMove && velocity.X > -maxSpeed)
                     {
@@ -361,19 +581,18 @@ namespace VoxelGame
 
                         Scale = new Vector2f(-1, 1);   
                         Origin = new Vector2f(rect.Size.X / 2, 0);
+                        if (_itemEntity != null)
+                            _itemEntity.Scale = new Vector2f(-1, 1);
                     }
 
-                    asHead.Play("run");
-                    asHair.Play("run");
-                    asShirt.Play("run");
-                    asUndershirt.Play("run");
-                    asHands.Play("run");
-                    asPants.Play("run");
-                    asShoes.Play("run");
+                    UseAnim(PlayerAnim.Run);
                 }
                 else
                 {
                     velocity = new Vector2f(0, velocity.Y);
+
+                    if (!Mouse.IsButtonPressed(Mouse.Button.Left))
+                        UseAnim(PlayerAnim.Idle);
                 }
 
                 if (isJump && !isFall && !isJumped)
@@ -381,32 +600,57 @@ namespace VoxelGame
                     velocity += new Vector2f(0, -200);
                     isFall = true;
                     isJumped = true;
-
-                    asHead.Play("jump");
-                    asHair.Play("jump");
-                    asShirt.Play("jump");
-                    asUndershirt.Play("jump");
-                    asHands.Play("jump");
-                    asPants.Play("jump");
-                    asShoes.Play("jump");
                 }
                 else if (!isJump)
                     isJumped = false;
 
-                if(!isMove && !isJump)
+                if (isJump)
                 {
-                    asHead.Play("idle");
-                    asHair.Play("idle");
-                    asShirt.Play("idle");
-                    asUndershirt.Play("idle");
-                    asHands.Play("idle");
-                    asPants.Play("idle");
-                    asShoes.Play("idle");
+                    UseAnim(PlayerAnim.Jump);
                 }
+            }
+
+
+            if (_itemEntity != null)
+            {
+                _itemEntity.Scale = new Vector2f(Scale.X, 1);
+
+                //if (asHands.GetCurrentFrame() == (0, 0))
+                //{
+                //    _itemEntity.Position = Position + new Vector2f(6, 34);
+                //    _itemEntity.Rotation = -180;
+                //    _itemEntity.SetAABB(new AABB(-_itemEntity.Size / 2 - new Vector2f(12, 0), _itemEntity.Size / 2 + new Vector2f(0, 12)));
+                //}
+                //else if (asHands.GetCurrentFrame() == (0, 1))
+                //{
+                //    _itemEntity.Position = Position + new Vector2f(4, 12);
+                //    _itemEntity.Rotation = -85;
+                //    _itemEntity.SetAABB(new AABB(-_itemEntity.Size / 2 - new Vector2f(12, 12), new Vector2f(0, 12)));
+                //}
+                //else if (asHands.GetCurrentFrame() == (0, 2))
+                //{
+                //    _itemEntity.Position = Position + new Vector2f(19, 12);
+                //    _itemEntity.Rotation = 0;
+                //    _itemEntity.SetAABB(new AABB(new Vector2f(0, -_itemEntity.Size.Y) / 2 + new Vector2f(0, -12), _itemEntity.Size + new Vector2f(0, -12)));
+                //}
+                //else if (asHands.GetCurrentFrame() == (0, 3))
+                //{
+                //    _itemEntity.Position = Position + new Vector2f(22, 26);
+                //    _itemEntity.Rotation = 65;
+                //    _itemEntity.SetAABB(new AABB(new Vector2f(0, _itemEntity.Size.Y) / 2 + new Vector2f(0, -22), _itemEntity.Size + new Vector2f(0, -26 + (_itemEntity.Size.Y / 2))));
+                //}
+                //else if (asHands.GetCurrentFrame() == (0, 4))
+                //{
+                //    _itemEntity.Position = Position + new Vector2f(16, 32);
+                //    _itemEntity.Rotation = 85;
+                //    _itemEntity.SetAABB(new AABB(new Vector2f(0, _itemEntity.Size.Y) / 2 + new Vector2f(0, -22), _itemEntity.Size + new Vector2f(2, -22 + (_itemEntity.Size.Y / 2))));
+                //}
             }
         }
 
-
+        /// <summary>
+        /// Обработка взаимодействия игрока с мышью (клик, установка/разрушение блоков и т.д.).
+        /// </summary>
         private void MouseUpdate()
         {
             Vector2f mousePos = Game.GetMousePositionByWorld();
@@ -453,6 +697,10 @@ namespace VoxelGame
                                     _inventory.GetSelectedCell()!.ItemStack!.ItemCount -= 1;
                                 }
                             }
+                            else if (tile != null && tile is IUsedTile usedTile)
+                            {
+                                usedTile.Use();
+                            }
                             else if (wall == null && _selectedItem != null && _selectedItem.Type == ItemType.Wall)
                             {
                                 if (chunk.SetWallByWorldPosition(mousePos, Tiles.ItemListToWallType(_selectedItem.ItemList), isPlayerSet: true))
@@ -463,28 +711,88 @@ namespace VoxelGame
                         }
                         else if (mouseLeftClick)
                         {
-                            if (tile != null && itemIsTool)
-                            {
-                                var tool = _selectedItem as ItemTool;
 
-                                chunk.BreakingTileByWorldPosition(mousePos, tool!.Type, tool.Power, tool.BreakingSpeed * 0.05f);
-                            }
-                            else if(tile != null && !itemIsTool)
+                            if (_selectedItem is ItemTool itemTool)
                             {
-                                chunk.BreakingTileByWorldPosition(mousePos, ItemType.None, 0, 0.1f);
-                            }
-                            else if (wall != null && itemIsTool)
-                            {
-                                var tool = _selectedItem as ItemTool;
+                                AudioManager.PlaySuond("Item_1");
 
-                                chunk.BreakingWallByWorldPosition(mousePos, tool!.Type, tool.Power, tool.BreakingSpeed * 0.05f);
+                                if (tile != null && tile.IsRequiredToolAndPower(itemTool!.Type, itemTool.Power))
+                                {
+                                    chunk.BreakingTileByWorldPosition(mousePos, itemTool!.Type, itemTool.Power, itemTool.BreakingSpeed * 0.5f);
+                                    AudioManager.PlaySuond("Dig_0");
+                                }
+
+                                else if (wall != null && itemTool.Type == ItemType.Hammer)
+                                {
+                                    chunk.BreakingWallByWorldPosition(mousePos, itemTool!.Type, itemTool.Power, itemTool.BreakingSpeed * 0.5f);
+                                    AudioManager.PlaySuond("Dig_2");
+                                }
+
                             }
+
+                            else if (tile != null && !itemIsTool)
+                            {
+                                chunk.BreakingTileByWorldPosition(mousePos, ItemType.None, 0, _playerAnimationSpeed);
+                            }
+
+                            if(_selectedItem != null && _itemEntity == null)
+                            {
+                                var texture = TextureManager.GetTexture(_selectedItem.SpriteName);
+
+                                _itemEntity = new DropItem(_selectedItem, new AABB(new Vector2f(texture.Size.X, texture.Size.Y)), world) { IsDrop = false, Position = Position };
+                               // _itemEntity.Origin = new Vector2f(0, texture.Size.Y);
+                                _itemEntity.UseAnimation();
+                                world.AddEntity(_itemEntity);
+                            }
+
+                            UseAnim(PlayerAnim.Tool);
+                        }
+                        else if(!mouseLeftClick)
+                        {
+                            world.RemoveEntity(_itemEntity);
+                            _itemEntity = null;
                         }
                     }
                 }
             }
         }
 
+        /// <summary>  
+        /// Отображает инвентарь игрока на экране.  
+        /// </summary>  
+        /// <remarks>  
+        /// Этот метод вызывает отображение UI-инвентаря игрока,  
+        /// позволяя взаимодействовать с предметами, находящимися в инвентаре.  
+        /// </remarks>  
+        public void ShowInventory(Tile tile)
+        {
+            if(tile is TileChest chestTile)
+            {
+                _chest = chestTile;
+            }
+
+            _inventory.ShowInventory();
+        }
+
+        /// <summary>
+        /// Запустить анимацию для всех частей тела игрока.
+        /// </summary>
+        /// <param name="anim">Тип анимации.</param>
+        public void UseAnim(PlayerAnim anim)
+        {
+            _playerAnimator.Play("Idle");
+        }
+        /// <summary>
+        /// Анимация предмета в руке
+        /// </summary>
+        public void ItemAnim()
+        {
+
+        }
+
+        /// <summary>
+        /// Обработка столкновения игрока с другой сущностью.
+        /// </summary>
         public override void OnCollided(Entity other, Vector2f normal, float depth)
         {
             base.OnCollided(other, normal, depth);
@@ -492,32 +800,49 @@ namespace VoxelGame
             if (other == null)
                 return;
 
+            // Если столкновение с предметом - попытка подобрать его в инвентарь
             if (other.Layer is CollisionLayer.Item)
             {
                 var item = other as DropItem;
-                if (item != null)
+                if (item != null && item.IsDrop)
                 {
                     if (_inventory.AddItem(item.Item))
                     {
+                        AudioManager.PlaySuond("Grab");
                         world.RemoveItem(item);
                     }
                 }
             }
         }
 
+        /// <summary>
+        /// Действия при смерти игрока.
+        /// </summary>
+        public override void OnKill()
+        {
+            base.OnKill();
+
+            UIManager.RemoveWindow(_inventory);
+            Kill = true;
+        }
+
+        /// <summary>
+        /// Отрисовка игрока и его анимаций.
+        /// </summary>
         public override void Draw(RenderTarget target, RenderStates states)
         {
+            if (Kill)
+            {
+                target.Draw(_timerText, states);
+
+                return;
+            }
+
             base.Draw(target, states);
 
             states.Transform *= Transform;
 
-            target.Draw(asHead, states);
-            target.Draw(asHair, states);
-            target.Draw(asShirt, states);
-            target.Draw(asUndershirt, states);
-            target.Draw(asHands, states);
-            target.Draw(asPants, states);
-            target.Draw(asShoes, states);
+            target.Draw(_playerAnimator, states);
         }
     }
 }

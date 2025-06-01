@@ -8,6 +8,11 @@ namespace VoxelGame.UI
     {
         protected RectangleShape titleBar;
         protected Text titleText;
+        protected Texture backgroundTexture
+        {
+            get => rect.Texture;
+            set => rect.Texture = value;
+        }
         
         public string Title
         {
@@ -20,14 +25,14 @@ namespace VoxelGame.UI
         public UIWindow(Vector2f size, string title = "Window")
         {
             rect = new RectangleShape(size);
-            rect.Origin = new Vector2f(40, Size.Y / 2);
+            //rect.Origin = new Vector2f(40, Size.Y / 2);
             rect.FillColor = new Color(200, 200, 200);
 
             titleBar = new RectangleShape(new Vector2f(size.X, 32));
             //titleBar.Origin = titleBar.Size / 2;
             titleBar.Position = new Vector2f(0, -size.Y) / 2;
 
-            titleText = new Text(title, AssetManager.GetFont("Arial"));
+            titleText = new Text(title, TextureManager.GetFont("Arial"));
             titleText.FillColor = Color.Black;
             //titleText.Origin = titleBar.Size / 2;
             titleText.Position = titleBar.Position;

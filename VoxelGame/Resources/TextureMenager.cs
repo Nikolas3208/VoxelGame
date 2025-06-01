@@ -3,7 +3,7 @@ using VoxelGame.Graphics;
 
 namespace VoxelGame.Resources
 {
-    public static class AssetManager
+    public static class TextureManager
     {
         /// <summary>
         /// Сортированный список текстур
@@ -18,11 +18,11 @@ namespace VoxelGame.Resources
         /// <summary>
         /// Базовый путь
         /// </summary>
-        public static string BasePath { get; set; } = "Assets/";
+        public static string BasePath { get; set; } = "Assets/Textures";
 
-        public static void Load()
+        public static void LoadAll()
         {
-            var files = Directory.GetFiles(BasePath, "*.*", SearchOption.AllDirectories);
+            var files = Directory.GetFiles(BasePath, "*.png*", SearchOption.AllDirectories);
 
             foreach (var file in files)
             {

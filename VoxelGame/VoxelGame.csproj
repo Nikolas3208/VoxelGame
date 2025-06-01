@@ -4,8 +4,16 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <ApplicationIcon>bin\Debug\net8.0\Assets\Textures\Terraria-Icon.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="bin\Debug\net8.0\Assets\Textures\Terraria-Icon.ico" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="SFML.Net" Version="2.6.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Audio\" />
   </ItemGroup>
 </Project>

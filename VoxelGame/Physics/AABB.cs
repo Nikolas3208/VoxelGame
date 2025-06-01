@@ -1,5 +1,4 @@
 ﻿using SFML.System;
-using System.Numerics;
 
 namespace VoxelGame.Physics
 {
@@ -102,6 +101,39 @@ namespace VoxelGame.Physics
         public AABB Transform(Vector2f position)
         {
             return new AABB(Min + position, Max + position);
+        }
+
+        public AABB Transform(Vector2f position, float sin, float cos)
+        {
+            Vector2f newMin = new Vector2f(
+                Min.X * cos - Min.Y * sin + position.X,
+                Min.X * sin + Min.Y * cos + position.Y
+            );
+            Vector2f newMax = new Vector2f(
+                Max.X * cos - Max.Y * sin + position.X,
+                Max.X * sin + Max.Y * cos + position.Y
+            );
+            return new AABB(newMin, newMax);
+        }
+
+        public AABB Transform(Vector2f[] points, float sin, float cos)
+        {
+            float minX = float.MaxValue;
+            float minY = float.MaxValue;
+            float maxX = float.MinValue;
+            float maxY = float.MinValue;
+
+            for (int i = 0; i < points.Length; i++)
+            {
+                Vector2f v = points[i];
+
+                if (v.X < minX) { minX = v.X; }
+                if (v.X > maxX) { maxX = v.X; }
+                if (v.Y < minY) { minY = v.Y; }
+                if (v.Y > maxY) { maxY = v.Y; }
+            }
+
+            return new AABB(minX, minY, maxX, maxY);
         }
     }
 }

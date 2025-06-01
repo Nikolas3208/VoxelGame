@@ -52,7 +52,7 @@ namespace VoxelGame.UI.Inventory
         public UIInventoryCell()
         {
             rect = new RectangleShape(new Vector2f(CellSize, CellSize));
-            rect.Texture = AssetManager.GetTexture("Inventory_Back");
+            rect.Texture = TextureManager.GetTexture("Inventory_Back");
             rect.FillColor = new Color(100, 100, 255, 127);
 
             rect.Origin = Size / 2;

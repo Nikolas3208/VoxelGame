@@ -21,6 +21,11 @@ namespace VoxelGame.Worlds.Tile
 
         public override void UpdateView()
         {
+            if(DownTile == null)
+            {
+                PerentChunk.SetTile((int)LocalPosition.X, (int)LocalPosition.Y, TileType.None);
+            }
+
             // Получаем текстурные координаты
             int x = (int)(_randNum * _vegetationSpriteSizeX);
             int y = 0;

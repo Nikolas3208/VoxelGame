@@ -1,17 +1,19 @@
 ﻿using SFML.Graphics;
 using SFML.System;
 using SFML.Window;
-using VoxelGame.UI.Inventory;
 
 namespace VoxelGame.UI
 {
     public abstract class UIBase : Transformable, Drawable
     {
+        public delegate void UIHovered(bool value);
+        public event UIHovered OnHovered;
+
         protected RectangleShape rect;
 
         public List<UIBase> Childs;
 
-        public string StrId { get; private set; } = string.Empty;
+        public string StrId { get; set; } = string.Empty;
         public string Name { get; set; } = nameof(UIBase);
         public UIBase? Perent { get; set; }
         public UIBase? OldPerent { get; set; }
@@ -33,17 +35,14 @@ namespace VoxelGame.UI
             }
         }
 
-        public new Vector2f Origin
+        public Vector2f GlobalPosition
         {
-            get
-            {
-                return rect.Origin;
-            }
-            set
-            {
-                rect.Origin = value;
-                //base.Origin = value;
-            }
+            get => Perent == null ? Position : Perent.GlobalPosition + Position;
+        }
+
+        public Vector2f GlobalOrigin
+        {
+            get => Perent == null ? Origin : Perent.GlobalOrigin + Origin;
         }
 
         public Vector2f DragOffset { get; private set; }
@@ -54,16 +53,6 @@ namespace VoxelGame.UI
             Childs = new List<UIBase>();
 
             StrId = Guid.NewGuid().ToString();
-        }
-
-        public Vector2f GetGlobalPosition()
-        {
-            if (Perent != null)
-            {
-                return Perent.GetGlobalPosition() + Position;
-            }
-            else
-                return Position;
         }
 
         public virtual void OnDrag()
@@ -92,7 +81,7 @@ namespace VoxelGame.UI
 
         public virtual bool AddChild(UIBase child)
         {
-            if(!Childs.Contains(child))
+            if (!Childs.Contains(child))
             {
                 Childs.Add(child);
 
@@ -100,7 +89,7 @@ namespace VoxelGame.UI
             }
 
             return false;
-        } 
+        }
 
         public virtual UIBase? GetChild(string strId)
         {
@@ -112,8 +101,6 @@ namespace VoxelGame.UI
             return Childs.Remove(child);
         }
 
-        public FloatRect GetFloatRect() => new FloatRect(GetGlobalPosition() - rect.Origin + rect.Position, Size);
-
         public virtual void Update(float deltaTime)
         {
             foreach (var c in Childs)
@@ -124,31 +111,35 @@ namespace VoxelGame.UI
         {
             IsHovered = GetFloatRect().Contains(UIManager.MousePosition);
 
+            OnHovered?.Invoke(false);
+
             if (IsHovered)
             {
+                OnHovered?.Invoke(true);
+
                 if (UIManager.Drag == null)
                 {
                     if (CanDrag && Mouse.IsButtonPressed(Mouse.Button.Left))
                     {
                         UIManager.Drag = this;
-                        DragOffset = UIManager.MousePosition - GetGlobalPosition();
+                        DragOffset = UIManager.MousePosition - GlobalPosition;
                         OnDrag();
                     }
                 }
 
-                if(UIManager.Drag != this && UIManager.Drag != null)
+                if (UIManager.Drag != this && UIManager.Drag != null)
                 {
                     UIManager.Drop = this;
                 }
 
-                for(int i = 0; i < Childs.Count; i++)
+                for (int i = 0; i < Childs.Count; i++)
                     Childs[i]?.UpdateOver(deltaTime);
             }
         }
 
         public virtual void Draw(RenderTarget target, RenderStates states)
         {
-            if(!IsVisible) 
+            if (!IsVisible)
                 return;
 
             states.Transform *= Transform;
@@ -160,6 +151,12 @@ namespace VoxelGame.UI
             {
                 child.Draw(target, states);
             }
+        }
+
+        public FloatRect GetFloatRect()
+        {
+            var localBounds = rect.GetGlobalBounds();
+            return new FloatRect((localBounds.Position + GlobalPosition - GlobalOrigin + rect.Position - rect.Origin), Size);
         }
     }
 }

@@ -4,112 +4,213 @@ using VoxelGame.Item;
 
 namespace VoxelGame.Worlds.Tile
 {
+    /// <summary>
+    /// Перечисление типов плиток, доступных в игре.
+    /// </summary>
     public enum TileType
     {
+        /// <summary>
+        /// Отсутствие плитки, используется для пустых областей.
+        /// </summary>
         None,
+
+        /// <summary>
+        /// Земля — базовый строительный материал.
+        /// </summary>
         Ground,
+
+        /// <summary>
+        /// Трава — декоративный элемент или поверхность.
+        /// </summary>
         Grass,
+
+        /// <summary>
+        /// Камень — строительный материал или ресурс.
+        /// </summary>
         Stone,
+
+        /// <summary>
+        /// Дерево (дуб) — ресурс для создания досок и других предметов.
+        /// </summary>
         Oak,
+
+        /// <summary>
+        /// Дерево (берёза) — альтернативный ресурс для создания досок.
+        /// </summary>
         Birch,
+
+        /// <summary>
+        /// Листва — декоративный элемент.
+        /// </summary>
         Leaves,
+
+        /// <summary>
+        /// Железная руда — ресурс для создания железных предметов.
+        /// </summary>
         IronOre,
+
+        /// <summary>
+        /// Медная руда — ресурс для создания медных предметов.
+        /// </summary>
         CopperOre,
+
+        /// <summary>
+        /// Железный слиток — обработанный ресурс для создания предметов.
+        /// </summary>
         IronIngot,
+
+        /// <summary>
+        /// Медный слиток — обработанный ресурс для создания предметов.
+        /// </summary>
         CopperIngot,
+
+        /// <summary>
+        /// Доска (дуб) — строительный материал.
+        /// </summary>
         OakBoard,
+
+        /// <summary>
+        /// Доска (берёза) — строительный материал.
+        /// </summary>
         BirchBoard,
+
+        /// <summary>
+        /// Дверь — элемент интерьера или защиты.
+        /// </summary>
         Door,
+
+        /// <summary>
+        /// Верстак — инструмент для создания сложных предметов.
+        /// </summary>
         Workbench,
+
+        /// <summary>
+        /// Сундук — хранилище для предметов.
+        /// </summary>
         Chest,
+
+        /// <summary>
+        /// Факел — источник света.
+        /// </summary>
         Torch,
+
+        /// <summary>
+        /// Печка — инструмент для обработки ресурсов.
+        /// </summary>
         Stove,
+
+        /// <summary>
+        /// Наковальня — инструмент для создания металлических предметов.
+        /// </summary>
         Anvil,
-        Vegetation
+
+        /// <summary>
+        /// Растительность — декоративный элемент.
+        /// </summary>
+        Vegetation,
+
+        /// <summary>
+        /// Невидимая стена — используется для ограничения движения.
+        /// </summary>
+        InvisibleWall
     }
+    /// <summary>
+    /// Класс, представляющий плитку в игровом мире.
+    /// </summary>
     public class Tile : ITile
     {
-        public const int TileSize = 16; // Размер плитки
+        /// <summary>
+        /// Размер одной плитки в пикселях.
+        /// </summary>
+        public const int TileSize = 16;
 
+        // Ссылки на соседние плитки
         protected Tile? _upTile;
         protected Tile? _downTile;
         protected Tile? _leftTile;
         protected Tile? _rightTile;
 
+        // Ссылка на стену, связанную с плиткой
         protected WallTile? _wallTile;
 
+        // Вершины для отрисовки плитки
         protected Vertex[] _vertices;
 
         /// <summary>
-        /// Id плитки
+        /// Уникальный идентификатор плитки.
         /// </summary>
         public int Id { get; set; }
 
         /// <summary>
-        /// Тип плитки
+        /// Тип плитки.
         /// </summary>
         public TileType Type { get; set; }
 
         /// <summary>
-        /// Требуемый инструмент
+        /// Требуемый инструмент для разрушения плитки.
         /// </summary>
         public ItemType RequiredTool { get; set; }
 
         /// <summary>
-        /// Требуемаяя мощность инструмента
+        /// Требуемая мощность инструмента для разрушения плитки.
         /// </summary>
         public int RequiredToolPower { get; set; }
 
         /// <summary>
-        /// Выпадаемый предмет, после разрушения
+        /// Предмет, который выпадает при разрушении плитки.
         /// </summary>
         public ItemList DropItem { get; set; }
 
         /// <summary>
-        /// Прочность
+        /// Прочность плитки.
         /// </summary>
         public float Strength { get; set; }
 
         /// <summary>
-        /// Твердый?
+        /// Является ли плитка твёрдой (непроходимой).
         /// </summary>
         public bool IsSolid { get; set; }
 
         /// <summary>
-        /// Является ли плитка деревом
+        /// Является ли плитка деревом.
         /// </summary>
         public bool IsTree { get; set; } = false;
 
         /// <summary>
-        /// Является ли плитка верхушкой дерева
+        /// Является ли плитка верхушкой дерева.
         /// </summary>
         public bool IsTreeTop { get; set; } = false;
 
         /// <summary>
-        /// Родительский чанк
+        /// Родительский чанк, в котором находится плитка.
         /// </summary>
         public Chunk PerentChunk { get; set; }
 
         /// <summary>
-        /// Если плитка состоит из нескольких, добавляем им всем родителя
+        /// Родительская плитка (если плитка состоит из нескольких частей).
         /// </summary>
         public Tile? PerentTile { get; set; }
 
         /// <summary>
-        /// Верхний сосед
+        /// Список дочерних плиток (если плитка состоит из нескольких частей).
         /// </summary>
-        public Tile? UpTile 
-        { 
+        public List<Tile> ChildTiles { get; set; } = new List<Tile>();
+
+        /// <summary>
+        /// Верхний сосед плитки.
+        /// </summary>
+        public Tile? UpTile
+        {
             get => _upTile;
             set
             {
                 _upTile = value;
-                UpdateView();
+                UpdateView(); // Обновление текстурных координат при изменении соседа
             }
         }
 
         /// <summary>
-        /// Нижний сосед
+        /// Нижний сосед плитки.
         /// </summary>
         public Tile? DownTile
         {
@@ -122,7 +223,7 @@ namespace VoxelGame.Worlds.Tile
         }
 
         /// <summary>
-        /// Левый сосед
+        /// Левый сосед плитки.
         /// </summary>
         public Tile? LeftTile
         {
@@ -135,7 +236,7 @@ namespace VoxelGame.Worlds.Tile
         }
 
         /// <summary>
-        /// Правый сосед
+        /// Правый сосед плитки.
         /// </summary>
         public Tile? RightTile
         {
@@ -147,6 +248,9 @@ namespace VoxelGame.Worlds.Tile
             }
         }
 
+        /// <summary>
+        /// Связанная стена.
+        /// </summary>
         public WallTile? WallTile
         {
             get => _wallTile;
@@ -158,30 +262,41 @@ namespace VoxelGame.Worlds.Tile
         }
 
         /// <summary>
-        /// Мировая позиция плитки
+        /// Мировая позиция плитки.
         /// </summary>
         public Vector2f GlobalPosition { get; set; }
 
         /// <summary>
-        /// Локальная позиция стенки
+        /// Локальная позиция плитки в чанке.
         /// </summary>
         public Vector2f LocalPosition { get; set; }
 
         /// <summary>
-        /// Размер плитки
+        /// Размер плитки.
         /// </summary>
         public Vector2f Size { get; set; }
 
-        public string TextureName { get; set; } 
+        /// <summary>
+        /// Имя текстуры плитки.
+        /// </summary>
+        public string TextureName { get; set; }
 
         /// <summary>
-        /// Плитка
+        /// Конструктор плитки.
         /// </summary>
-        /// <param name="type"> Тип плитки </param>
-        /// <param name="requiredTool"> Требуемый инструмент </param>
-        /// <param name="reqiuredToolPower"> Мощность требуемого инструмента </param>
-        /// <param name="strength"> Прочность плитки </param>
-        /// <param name="isSolid"> Плитка твердая? </param>
+        /// <param name="type">Тип плитки.</param>
+        /// <param name="dropItem">Предмет, выпадающий при разрушении.</param>
+        /// <param name="requiredTool">Требуемый инструмент.</param>
+        /// <param name="reqiuredToolPower">Мощность требуемого инструмента.</param>
+        /// <param name="strength">Прочность плитки.</param>
+        /// <param name="isSolid">Является ли плитка твёрдой.</param>
+        /// <param name="perentChunk">Родительский чанк.</param>
+        /// <param name="upTile">Верхний сосед.</param>
+        /// <param name="downTile">Нижний сосед.</param>
+        /// <param name="leftTile">Левый сосед.</param>
+        /// <param name="rightTile">Правый сосед.</param>
+        /// <param name="wall">Связанная стена.</param>
+        /// <param name="localPosition">Локальная позиция плитки.</param>
         public Tile(TileType type, ItemList dropItem, ItemType requiredTool, int reqiuredToolPower, float strength, bool isSolid, Chunk perentChunk,
             Tile? upTile, Tile? downTile, Tile? leftTile, Tile? rightTile, WallTile? wall, Vector2f localPosition)
         {
@@ -227,7 +342,7 @@ namespace VoxelGame.Worlds.Tile
         }
 
         /// <summary>
-        /// Обновляем текстурные координаты
+        /// Обновляет текстурные координаты плитки в зависимости от её соседей.
         /// </summary>
         public virtual void UpdateView()
         {
@@ -374,11 +489,12 @@ namespace VoxelGame.Worlds.Tile
         }
 
         /// <summary>
-        /// Лобаем плитку
+        /// Разрушение плитки.
         /// </summary>
-        /// <param name="type"> Тип предмета </param>
-        /// <param name="itemPower"> Мошность предмета </param>
-        /// <returns> Если здоровье плитки 0 или меньше true </returns>
+        /// <param name="type">Тип инструмента.</param>
+        /// <param name="itemPower">Мощность инструмента.</param>
+        /// <param name="damage">Наносимый урон.</param>
+        /// <returns>True, если плитка разрушена.</returns>
         public virtual bool Breaking(ItemType type, float itemPower, float damage)
         {
             if (type == RequiredTool && itemPower >= RequiredToolPower)
@@ -401,6 +517,37 @@ namespace VoxelGame.Worlds.Tile
             return false;
         }
 
+        /// <summary>
+        /// Проверяет, подходит ли инструмент для разрушения плитки.
+        /// </summary>
+        /// <param name="type">Тип инструмента.</param>
+        /// <returns>True, если инструмент подходит.</returns>
+        public bool IsRequiredTool(ItemType type)
+        {
+            if (RequiredTool == ItemType.All || RequiredTool == ItemType.None)
+                return true;
+
+            return RequiredTool == type;
+        }
+
+        /// <summary>
+        /// Проверяет, подходит ли инструмент и его мощность для разрушения плитки.
+        /// </summary>
+        /// <param name="type">Тип инструмента.</param>
+        /// <param name="power">Мощность инструмента.</param>
+        /// <returns>True, если инструмент и мощность подходят.</returns>
+        public bool IsRequiredToolAndPower(ItemType type, float power)
+        {
+            if ((RequiredTool == ItemType.All || RequiredTool == ItemType.None) && power >= RequiredToolPower)
+                return true;
+
+            return power >= RequiredToolPower && type == RequiredTool;
+        }
+
+        /// <summary>
+        /// Возвращает вершины для отрисовки плитки.
+        /// </summary>
+        /// <returns>Массив вершин.</returns>
         public Vertex[] GetVertices() => _vertices;
     }
 }

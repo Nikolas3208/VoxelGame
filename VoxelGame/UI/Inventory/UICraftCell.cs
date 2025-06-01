@@ -15,7 +15,7 @@ namespace VoxelGame.UI.Inventory
         public UICraftCell()
         {
             rect = new RectangleShape(new Vector2f(UIInventoryCell.CellSize, UIInventoryCell.CellSize));
-            rect.Texture = AssetManager.GetTexture("Inventory_Back");
+            rect.Texture = TextureManager.GetTexture("Inventory_Back");
         }
 
         public void SetItem(Item.Item item)
@@ -28,7 +28,7 @@ namespace VoxelGame.UI.Inventory
                 return;
             }
 
-            _itemSprite = new Sprite(AssetManager.GetTexture(Item.SpriteName));
+            _itemSprite = new Sprite(TextureManager.GetTexture(Item.SpriteName));
             _itemSprite.Origin = -new Vector2f(8, 8);
         }
 

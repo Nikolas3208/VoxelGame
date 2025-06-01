@@ -40,7 +40,7 @@ namespace VoxelGame.Worlds
             int index = x * Chunk.ChunkSize * OneTileVerticesCount + y * OneTileVerticesCount;
 
             for (int i = 0; i < vertices.Length; i++)
-                _mesh[index + i].TexCoords = vertices[i].TexCoords;
+                _mesh[index + i] = vertices[i];
         }
 
         public void UpdateTileColor(Color color, int x, int y)

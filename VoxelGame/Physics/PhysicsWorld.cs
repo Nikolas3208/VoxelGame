@@ -1,11 +1,17 @@
-﻿using SFML.System;
+﻿using SFML.Graphics;
+using SFML.System;
+using VoxelGame.Entitys;
 using VoxelGame.Meths;
 using VoxelGame.Worlds;
+using VoxelGame.Worlds.Tile;
 
 namespace VoxelGame.Physics
 {
     public class PhysicsWorld
     {
+        // Радиус в пикслях, за пределами которого чанк не проверяется
+        private const float MaxChunkDistance = 500;
+
         /// <summary>
         /// Сила гравитаии и направление
         /// </summary>
@@ -25,19 +31,31 @@ namespace VoxelGame.Physics
         /// </summary>
         /// <param name="deltaTime"> Время кадра </param>
         /// <param name="entities"> Список сушностей </param>
-        /// <param name="chunks"> Список чанков </param>
-        public void Step(float deltaTime, List<Entity> entities, List<Chunk> chunks)
+        /// <param name="visibleChunk"> Список чанков </param>
+        public void Step(float deltaTime, List<Entity> entities, List<Chunk> visibleChunk)
         {
             // Update all entities in the world
             EntitysStep(deltaTime, entities);
+
             // Check for collisions
             for (int i = 0; i < entities.Count; i++)
             {
                 var entity = entities[i];
 
-                for (int j = 0; j < chunks.Count; j++)
+                if (entity is Npc npc && npc.Kill)
+                    continue;
+
+                for (int j = 0; j < visibleChunk.Count; j++)
                 {
-                    var chunk = chunks[j];
+                    var chunk = visibleChunk[j];
+
+                    if (chunk == null) continue;
+
+                    // Проверяем расстояние между сушностью и чанком
+                    float distanceToChunk = MathHelper.Distance(entity.Position, chunk.Position);
+                    if (distanceToChunk > MaxChunkDistance)
+                        continue; // Пропускаем чанк, если он слишком далеко
+
 
                     // Check if the entity is colliding with the chunk
                     if (entity.GetAABB().Intersect(chunk.GetAABB()))
@@ -53,7 +71,12 @@ namespace VoxelGame.Physics
                                 entity.Move(normal * depth);
 
                                 ResolveCollisionWhithEntityAndChunk(entity, normal, depth);
-                                entity.OnCollided(null, normal, depth);
+                                entity.OnCollided(null!, normal, depth);
+
+                                if(World.CollideDrawDebug)
+                                {
+                                    DebugMenu.DrawCollide(entity.GetAABB(), collider, Color.Red);
+                                }
                             }
                         }
                     }
@@ -63,6 +86,9 @@ namespace VoxelGame.Physics
                 for (int j = i + 1; j < entities.Count; j++)
                 {
                     var otherEntity = entities[j];
+
+                    if (otherEntity is Npc npcOther && npcOther.Kill)
+                        continue;
 
                     if (entity.GetAABB().Intersect(otherEntity.GetAABB(), out var normal, out var depth))
                     {
@@ -75,6 +101,11 @@ namespace VoxelGame.Physics
                         }
                         entity.OnCollided(otherEntity, normal, depth);
                         otherEntity.OnCollided(entity, -normal, depth);
+
+                        if (World.CollideDrawDebug)
+                        {
+                            DebugMenu.DrawCollide(entity.GetAABB(), otherEntity.GetAABB(), Color.Red);
+                        }
                     }
                 }
             }
@@ -90,6 +121,9 @@ namespace VoxelGame.Physics
             // Update all entities in the world
             foreach (var entity in entities)
             {
+                if(entity is Npc npc && npc.Kill)
+                    continue;
+
                 entity.Step(deltaTime, _gravity);
             }
         }

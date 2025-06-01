@@ -1,7 +1,5 @@
 ﻿using SFML.Graphics;
 using SFML.System;
-using System;
-using System.Transactions;
 using VoxelGame.Item;
 using VoxelGame.Physics;
 using VoxelGame.Resources;
@@ -12,69 +10,69 @@ namespace VoxelGame.Worlds
     public class Chunk : Transformable, Drawable
     {
         /// <summary>
-        /// Размер чанка
+        /// Chunk size
         /// </summary>
         public const int ChunkSize = 16;
 
         /// <summary>
-        /// Мир (родитель)
+        /// World (parent)
         /// </summary>
         private World _world;
 
         /// <summary>
-        /// Список плиток
+        /// List of tiles
         /// </summary>
         private Tile.Tile[] _tiles;
 
         /// <summary>
-        /// Список плиток стен
+        /// List of wall tiles
         /// </summary>
         private WallTile[] _tilesWall;
 
         /// <summary>
-        /// Список тел
+        /// List of bodies
         /// </summary>
         private List<AABB> _colliders;
 
         /// <summary>
-        /// Сетка плиток чанка
+        /// Chunk tile mesh dictionary
         /// </summary>
         private Dictionary<string, ChunkMesh> _chunkMeshs { get; }
 
         /// <summary>
-        /// Сетка стен чанка
+        /// Chunk wall mesh dictionary
         /// </summary>
         private Dictionary<WallType, ChunkMesh> _chunkMeshsWall { get; }
 
         /// <summary>
-        /// Локальная позиция чанка
+        /// Local chunk position
         /// </summary>
         public int X, Y;
 
         /// <summary>
-        /// Идентификатор чанка
+        /// Chunk identifier
         /// </summary>
         public int Id { get; set; }
 
         /// <summary>
-        /// Чанк готов( создан )
+        /// Is the chunk complete (created)
         /// </summary>
         public bool IsComplate { get; set; }
 
         /// <summary>
-        /// Цвет освещения плитки
+        /// Tile light color
         /// </summary>
         public byte[,] LightColorTile { get; set; } = new byte[ChunkSize, ChunkSize];
 
         /// <summary>
-        /// Цвет освещения стенки
+        /// Wall light color
         /// </summary>
         public byte[,] LightColorWall { get; set; } = new byte[ChunkSize, ChunkSize];
 
         /// <summary>
-        /// Чанк
+        /// Chunk constructor
         /// </summary>
-        /// <param name="world"> Мир (родитель) </param>
+        /// <param name="world"> World (parent) </param>
         public Chunk(World world)
         {
             _world = world;
@@ -91,25 +89,25 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// В чанке?
+        /// Is in chunk bounds?
         /// </summary>
-        /// <param name="x"> Х координата </param>
-        /// <param name="y"> У координата </param>
-        /// <returns> True если не выходит за размеры чанка или больше -1 </returns>
+        /// <param name="x"> X coordinate </param>
+        /// <param name="y"> Y coordinate </param>
+        /// <returns> True if not out of chunk size and greater than -1 </returns>
         public bool InBounds(int x, int y)
         {
             return x >= 0 && x < ChunkSize && y >= 0 && y < ChunkSize;
         }
 
-        ///----------------------------Плитки---------------------------///
+        ///----------------------------Tiles---------------------------///
 
         /// <summary>
-        /// Установить плитку в локальных координатах, по типу плитки
+        /// Set tile in local coordinates, by tile type
         /// </summary>
-        /// <param name="x"> Позиция по Х </param>
-        /// <param name="y"> Позиция по У </param>
-        /// <param name="type"> Тип плитки </param>
-        /// <returns> True если плитка установлена </returns>
+        /// <param name="x"> X position </param>
+        /// <param name="y"> Y position </param>
+        /// <param name="type"> Tile type </param>
+        /// <returns> True if tile is set </returns>
         public bool SetTile(int x, int y, TileType type, bool setWall = false, bool isPlayerSet = false)
         {
             if (!InBounds(x, y))
@@ -135,7 +133,7 @@ namespace VoxelGame.Worlds
                 if (setWall)
                     return SetWall(x, y, Tiles.TileTypeToWallType(type));
             }
-            else if(type != TileType.None && IsComplate && isPlayerSet)
+            else if (type != TileType.None && IsComplate && isPlayerSet)
             {
                 var tile = Tiles.GetTile(type, this, upTile, downTile, leftTile, rightTile, wall, new Vector2f(x, y));
 
@@ -151,7 +149,7 @@ namespace VoxelGame.Worlds
                 else
                     return false;
             }
-            else if(type == TileType.None)
+            else if (type == TileType.None)
             {
                 int index = x * ChunkSize + y;
 
@@ -183,11 +181,11 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Установить плитку в локальных координатах, по мировым координатам, по типу плитки
+        /// Set tile in local coordinates, by world coordinates and tile type
         /// </summary>
-        /// <param name="position"> Позиция </param>
-        /// <param name="tile"> Плитка </param>
-        /// <returns> True если плитка установленна </returns>
+        /// <param name="position"> Position </param>
+        /// <param name="tile"> Tile </param>
+        /// <returns> True if tile is set </returns>
         public bool SetTileByWorldPosition(Vector2f position, TileType type, bool setWall = false, bool isPlayerSet = false)
         {
             int x = (int)((position.X - Position.X) / Tile.Tile.TileSize);
@@ -199,8 +197,22 @@ namespace VoxelGame.Worlds
         public Tile.Tile SetTileToMeshAndList(int x, int y, TileType type, Tile.Tile? upTile, Tile.Tile? downTile,
             Tile.Tile? leftTile, Tile.Tile? rightTile, WallTile? wall)
         {
-            var tile = Tiles.GetTile(type, this, upTile, downTile, leftTile, rightTile, wall, new Vector2f(x, y));
-            tile.GlobalPosition = new Vector2f(x, y) * Tile.Tile.TileSize + Position;
+            if(x >= ChunkSize)
+            {
+                return _world.GetChunk(X + 1, Y)?.SetTileToMeshAndList(ChunkSize - x, y, type, upTile, downTile, leftTile, rightTile, wall)!;
+            }
+            else if(x < 0)
+            {
+                return _world.GetChunk(X - 1, Y)?.SetTileToMeshAndList(ChunkSize + x, y, type, upTile, downTile, leftTile, rightTile, wall)!;
+            }
+            else if (y >= ChunkSize)
+            {
+                return _world.GetChunk(X, Y + 1)?.SetTileToMeshAndList(x, ChunkSize - y, type, upTile, downTile, leftTile, rightTile, wall)!;
+            }
+            else if (y < 0)
+            {
+                return _world.GetChunk(X, Y - 1)?.SetTileToMeshAndList(x, ChunkSize + y, type, upTile, downTile, leftTile, rightTile, wall)!;
+            }
 
             int index = x * ChunkSize + y;
 
@@ -214,6 +226,9 @@ namespace VoxelGame.Worlds
                     SetTileToMesh(x, y, _tiles[index].TextureName, new Vertex[6]);
                 }
             }
+
+            var tile = Tiles.GetTile(type, this, upTile, downTile, leftTile, rightTile, wall, new Vector2f(x, y));
+            tile.GlobalPosition = new Vector2f(x, y) * Tile.Tile.TileSize + Position;
 
             SetTileToMesh(x, y, tile.TextureName, tile.GetVertices());
 
@@ -235,18 +250,18 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Установить верстак
+        /// Set a multi-tile object (e.g. workbench)
         /// </summary>
-        /// <param name="x"> Позиия по Х </param>
-        /// <param name="y"> Позиция по У </param>
-        /// <param name="type"> Тип верстака </param>
+        /// <param name="x"> X position </param>
+        /// <param name="y"> Y position </param>
+        /// <param name="type"> Multi-tile type </param>
         /// <returns></returns>
         public bool SetMultipleTile(int startX, int startY, TileType type, Tile.Tile? upTile, Tile.Tile? downTile,
             Tile.Tile? leftTile, Tile.Tile? rightTile, WallTile? wall)
         {
             var tile = Tiles.GetTile(type, this, upTile, downTile, leftTile, rightTile, wall, new Vector2f(startX, startY));
 
-            if(tile == null)
+            if (tile == null)
                 return false;
 
             bool setRight = true;
@@ -256,7 +271,7 @@ namespace VoxelGame.Worlds
             {
                 for (int y = 0; y < tile.Size.Y; y++)
                 {
-                    if(GetTile(x + startX, startY - y, true) != null)
+                    if (GetTile(x + startX, startY - y, true) != null)
                     {
                         setRight = false;
                         break;
@@ -269,7 +284,7 @@ namespace VoxelGame.Worlds
                     }
                 }
 
-                if(!setRight)
+                if (!setRight)
                     break;
             }
 
@@ -287,6 +302,7 @@ namespace VoxelGame.Worlds
                         {
                             var newTile = SetTileToMeshAndList(x + startX, startY - y, type);
                             newTile.PerentTile = baseTile;
+                            baseTile.ChildTiles.Add(newTile);
                         }
                     }
                 }
@@ -312,7 +328,7 @@ namespace VoxelGame.Worlds
                         }
                     }
 
-                    if(!setLeft)
+                    if (!setLeft)
                         break;
                 }
 
@@ -328,6 +344,7 @@ namespace VoxelGame.Worlds
                             {
                                 var newTile = SetTileToMeshAndList(startX - x, startY - y, type);
                                 newTile.PerentTile = baseTile;
+                                baseTile.ChildTiles.Add(newTile);
                             }
                         }
                     }
@@ -365,6 +382,7 @@ namespace VoxelGame.Worlds
                             {
                                 var newTile = SetTileToMeshAndList(startX + x, startY - y, type);
                                 newTile.PerentTile = baseTile;
+                                baseTile.ChildTiles.Add(newTile);
                             }
                         }
                     }
@@ -413,7 +431,7 @@ namespace VoxelGame.Worlds
                         return true;
                     }
                 }
-                else if(rightTile != null && rightTile is TileWorkbench)
+                else if (rightTile != null && rightTile is TileWorkbench)
                 {
                     var upTile = GetTile(x + 1, y - 1, true);
                     var downTile = GetTile(x + 1, y + 1, true);
@@ -449,7 +467,7 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Установить плитку в локальных координатах сетки, по типу плитки
+        /// Set tile in local mesh coordinates, by tile type
         /// </summary>
         /// <param name="x"></param>
         /// <param name="y"></param>
@@ -457,7 +475,7 @@ namespace VoxelGame.Worlds
         /// <param name="vertices"></param>
         public void SetTileToMesh(int x, int y, string textureName, Vertex[] vertices)
         {
-            if(_chunkMeshs.ContainsKey(textureName))
+            if (_chunkMeshs.ContainsKey(textureName))
             {
                 _chunkMeshs[textureName].SetToMesh(x, y, vertices);
             }
@@ -471,22 +489,22 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Получить плитку по локальным координатам
+        /// Get tile by local coordinates
         /// </summary>
-        /// <param name="x"> Позиция по Х </param>
-        /// <param name="y"> Позиция по У </param>
-        /// <returns> Плитку, null если х,у вышли за рамки чанка или если плитка null </returns>
+        /// <param name="x"> X position </param>
+        /// <param name="y"> Y position </param>
+        /// <returns> Tile, null if x,y are out of chunk bounds or tile is null </returns>
         public Tile.Tile? GetTile(int x, int y, bool getOtherChunk = false)
         {
             if (!InBounds(x, y) && !getOtherChunk)
             {
                 return null;
             }
-            else if(getOtherChunk)
+            else if (getOtherChunk)
             {
                 if (x < 0)
                 {
-                   return _world.GetChunk(X - 1, Y)?.GetTile(ChunkSize + x, y);
+                    return _world.GetChunk(X - 1, Y)?.GetTile(ChunkSize + x, y);
                 }
                 else if (x >= ChunkSize)
                 {
@@ -507,10 +525,10 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Получить плитку по мировым координатам
+        /// Get tile by world coordinates
         /// </summary>
-        /// <param name="position"> Позиция </param>
-        /// <returns> Плитку, null если х,у вышли за рамки чанка или если плитка null </returns>
+        /// <param name="position"> Position </param>
+        /// <returns> Tile, null if x,y are out of chunk bounds or tile is null </returns>
         public Tile.Tile? GetTileByWorldPosition(Vector2f position, bool getOtherChunk = false)
         {
             int x = (int)((position.X - Position.X) / Tile.Tile.TileSize);
@@ -520,9 +538,9 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Получить плитку по типу плитки
+        /// Get tile by tile type
         /// </summary>
-        /// <param name="type"> Тип плитки </param>
+        /// <param name="type"> Tile type </param>
         /// <returns></returns>
         public Tile.Tile? GetTileByType(TileType type)
         {
@@ -530,9 +548,9 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Получить список плиток по типу плитки
+        /// Get list of tiles by tile type
         /// </summary>
-        /// <param name="type"> Тип плитки </param>
+        /// <param name="type"> Tile type </param>
         /// <returns></returns>
         public List<Tile.Tile> GetTilesByType(TileType type)
         {
@@ -540,13 +558,13 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Ломаем плитку, в локальных координатах
+        /// Break tile by local coordinates
         /// </summary>
-        /// <param name="x"> Х координата </param>
-        /// <param name="y"> У координата </param>
-        /// <param name="type"> Тип предмета которым ломаем </param>
-        /// <param name="itemPower"> Мощность предмета </param>
-        /// <param name="damage"> Урон по плитки </param>
+        /// <param name="x"> X coordinate </param>
+        /// <param name="y"> Y coordinate </param>
+        /// <param name="type"> Item type used to break </param>
+        /// <param name="itemPower"> Item power </param>
+        /// <param name="damage"> Tile damage </param>
         /// <returns></returns>
         public bool BreakingTile(int x, int y, ItemType type, float itemPower, float damage)
         {
@@ -554,14 +572,14 @@ namespace VoxelGame.Worlds
 
             if (tile != null)
             {
-                if(tile.Breaking(type, itemPower, damage))
+                if (tile.Breaking(type, itemPower, damage))
                 {
-                    if(tile.IsTree)
+                    if (tile.IsTree)
                     {
                         ChoppingTree(tile, x, y);
                     }
 
-                    switch(tile.Type)
+                    switch (tile.Type)
                     {
                         case TileType.Workbench:
                             return BreakingWorkbench(x, y);
@@ -575,12 +593,12 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Ломаем плитку, в мировых координатах
+        /// Break tile by world coordinates
         /// </summary>
-        /// <param name="position"> Позиия плитки </param>
-        /// <param name="type"> Тип предмета которым ломаем </param>
-        /// <param name="itemPower"> Мощность предмета </param>
-        /// <param name="damage"> Урон по плитки </param>
+        /// <param name="position"> Tile position </param>
+        /// <param name="type"> Item type used to break </param>
+        /// <param name="itemPower"> Item power </param>
+        /// <param name="damage"> Tile damage </param>
         /// <returns></returns>
         public bool BreakingTileByWorldPosition(Vector2f position, ItemType type, float itemPower, float damage)
         {
@@ -591,11 +609,11 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Обновляем вид плитки, в локальных координатах
+        /// Update tile view by local coordinates
         /// </summary>
-        /// <param name="x"> Х координата </param>
-        /// <param name="y"> У координата </param>
-        /// <param name="vertices"> Массив вершин </param>
+        /// <param name="x"> X coordinate </param>
+        /// <param name="y"> Y coordinate </param>
+        /// <param name="vertices"> Vertex array </param>
         public void UpdateTileView(int x, int y, Vertex[] vertices)
         {
             var tile = GetTile(x, y);
@@ -607,10 +625,10 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Обновляем вид плитки, в мировых координатах
+        /// Update tile view by world coordinates
         /// </summary>
-        /// <param name="position"> Позиция плитки </param>
-        /// <param name="vertices"> Массив вершин </param>
+        /// <param name="position"> Tile position </param>
+        /// <param name="vertices"> Vertex array </param>
         public void UpdateTileViewByWorldPosition(Vector2f position, Vertex[] vertices)
         {
             int x = (int)((position.X - Position.X) / Tile.Tile.TileSize);
@@ -620,46 +638,62 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Обновляем цвет плитки, в локальных координатах
+        /// Update tile color by local coordinates
         /// </summary>
-        /// <param name="color"> Цвет </param>
-        /// <param name="x"> Х координата </param>
-        /// <param name="y"> У координата </param>
-        public void UpdateTileColor(Color color, int x, int y)
+        /// <param name="color"> Color </param>
+        /// <param name="x"> X coordinate </param>
+        /// <param name="y"> Y coordinate </param>
+        public bool UpdateTileColor(Color color, int x, int y, bool useOtherChunk = false)
         {
-            var tile = GetTile(x, y);
+            var tile = GetTile(x, y, useOtherChunk);
 
-            if (tile != null && _chunkMeshs.ContainsKey(tile.TextureName))
+            if (tile != null && tile.PerentChunk != this)
             {
-                _chunkMeshs[tile.TextureName].UpdateTileColor(color, x, y);
+                tile.PerentChunk.UpdateTileColor(color, (int)tile.LocalPosition.X, (int)tile.LocalPosition.Y, useOtherChunk);
+
+                return true;
             }
+            else if(tile != null && tile.PerentChunk == this)
+            {
+                _chunkMeshs[tile.TextureName].UpdateTileColor(color, (int)tile.LocalPosition.X, (int)tile.LocalPosition.Y);
+
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
-        /// Получить цвет плитки, по локальным координатам
+        /// Get tile color by local coordinates
         /// </summary>
-        /// <param name="x"> Х координата </param>
-        /// <param name="y"> У координата </param>
+        /// <param name="x"> X coordinate </param>
+        /// <param name="y"> Y coordinate </param>
         /// <returns></returns>
-        public Color GetTileColor(int x, int y)
+        public Color GetTileColor(int x, int y, bool useOtherChunk = false)
         {
-            var tile = GetTile(x, y);
+            var tile = GetTile(x, y, useOtherChunk);
 
-            if (tile == null || !_chunkMeshs.ContainsKey(tile.TextureName))
-                return Color.Black;
+            if (tile != null && tile.PerentChunk != this)
+            {
+                return tile.PerentChunk.GetTileColor((int)tile.LocalPosition.X, (int)tile.LocalPosition.Y, useOtherChunk);
+            }
+            else if(tile != null && tile.PerentChunk == this)
+            {
+                return _chunkMeshs[tile.TextureName].GetTileColor((int)tile.LocalPosition.X, (int)tile.LocalPosition.Y);
+            }
 
-            return _chunkMeshs[tile.TextureName].GetTileColor(x, y);
+            return Color.Black;
         }
 
 
-        ///------------------------------Стенки-------------------------///
+        ///------------------------------Walls-------------------------///
 
         /// <summary>
-        /// Установить стенку в локальных координатах, по типу стенки
+        /// Set wall in local coordinates, by wall type
         /// </summary>
-        /// <param name="type"> Тип стенки </param>
-        /// <param name="x"> Позиция по Х </param>
-        /// <param name="y"> Позиция по У </param>
+        /// <param name="type"> Wall type </param>
+        /// <param name="x"> X position </param>
+        /// <param name="y"> Y position </param>
         public bool SetWall(int x, int y, WallType type, bool isPlayerSet = false)
         {
             if (!InBounds(x, y))
@@ -674,7 +708,7 @@ namespace VoxelGame.Worlds
             {
                 SetWallToMeshAndList(x, y, type, upWall, downWall, leftWall, rightWall);
             }
-            else if(type != WallType.None && isPlayerSet)
+            else if (type != WallType.None && isPlayerSet)
             {
                 var upTile = GetTile(x, y - 1, true);
                 var downTile = GetTile(x, y + 1, true);
@@ -690,15 +724,15 @@ namespace VoxelGame.Worlds
                 else
                     return false;
             }
-            else if(type == WallType.None)
+            else if (type == WallType.None)
             {
                 int index = x * ChunkSize + y;
-                
+
                 if (_tilesWall[index] != null)
                 {
                     if (_chunkMeshsWall.ContainsKey(_tilesWall[index].Type))
                     {
-                         SetWallToMesh(x, y, _tilesWall[index].Type, new Vertex[6]);
+                        SetWallToMesh(x, y, _tilesWall[index].Type, new Vertex[6]);
                     }
 
                     _world.DropItem(_tilesWall[index].DropItem, _tilesWall[index].GlobalPosition);
@@ -720,10 +754,10 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Установить стенку в локальных координатах, по мировым координатам, по типу стенки
+        /// Set wall in local coordinates, by world coordinates and wall type
         /// </summary>
-        /// <param name="position"> Позиия в мировых координатах </param>
-        /// <param name="type"> Тип стенки </param>
+        /// <param name="position"> Position in world coordinates </param>
+        /// <param name="type"> Wall type </param>
         /// <returns></returns>
         public bool SetWallByWorldPosition(Vector2f position, WallType type, bool isPlayerSet = false)
         {
@@ -734,12 +768,12 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Установить стенку в локальных координатах, в сетке, по типу стенки
+        /// Set wall in local mesh coordinates, by wall type
         /// </summary>
-        /// <param name="x"> Позиция по Х </param>
-        /// <param name="y"> Позиция по У </param>
-        /// <param name="type"> Тип стенки </param>
-        /// <param name="vertices"> Вершины </param>
+        /// <param name="x"> X position </param>
+        /// <param name="y"> Y position </param>
+        /// <param name="type"> Wall type </param>
+        /// <param name="vertices"> Vertices </param>
         public void SetWallToMesh(int x, int y, WallType type, Vertex[] vertices)
         {
             if (_chunkMeshsWall.ContainsKey(type))
@@ -768,11 +802,11 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Получить стенку по локальным координатам
+        /// Get wall by local coordinates
         /// </summary>
-        /// <param name="x"> Позиция по X </param>
-        /// <param name="y"> Позиция по Y </param>
-        /// <param name="getOtherChunk"> Проверять соседнии чанки? </param>
+        /// <param name="x"> X position </param>
+        /// <param name="y"> Y position </param>
+        /// <param name="getOtherChunk"> Check neighboring chunks? </param>
         /// <returns></returns>
         public WallTile? GetWall(int x, int y, bool getOtherChunk = false)
         {
@@ -805,10 +839,10 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Получить стенку по мировым координатам
+        /// Get wall by world coordinates
         /// </summary>
-        /// <param name="position"> Позиция в мировых координатах </param>
-        /// <param name="getOtherChunk"> Проверять соседнии чанки? </param>
+        /// <param name="position"> Position in world coordinates </param>
+        /// <param name="getOtherChunk"> Check neighboring chunks? </param>
         /// <returns></returns>
         public WallTile? GetWallByWorldPosition(Vector2f position, bool getOtherChunk = false)
         {
@@ -819,13 +853,13 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Ломаем стенку, в локальных координатах
+        /// Break wall by local coordinates
         /// </summary>
-        /// <param name="x"> Х координата </param>
-        /// <param name="y"> У координата </param>
-        /// <param name="type"> Тип предмета которым ломаем </param>
-        /// <param name="itemPower"> Мощность предмета </param>
-        /// <param name="damage"> Урон по стенке </param>
+        /// <param name="x"> X coordinate </param>
+        /// <param name="y"> Y coordinate </param>
+        /// <param name="type"> Item type used to break </param>
+        /// <param name="itemPower"> Item power </param>
+        /// <param name="damage"> Wall damage </param>
         /// <returns></returns>
         public bool BreakingWall(int x, int y, ItemType type, float itemPower, float damage)
         {
@@ -843,12 +877,12 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Ломаем стенку, в мировых координатах
+        /// Break wall by world coordinates
         /// </summary>
-        /// <param name="position"> Позиия стенку </param>
-        /// <param name="type"> Тип предмета которым ломаем </param>
-        /// <param name="itemPower"> Мощность предмета </param>
-        /// <param name="damage"> Урон по стенке </param>
+        /// <param name="position"> Wall position </param>
+        /// <param name="type"> Item type used to break </param>
+        /// <param name="itemPower"> Item power </param>
+        /// <param name="damage"> Wall damage </param>
         /// <returns></returns>
         public bool BreakingWallByWorldPosition(Vector2f position, ItemType type, float itemPower, float damage)
         {
@@ -859,11 +893,11 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Обновляем вид стенки, в локальных координатах
+        /// Update wall view by local coordinates
         /// </summary>
-        /// <param name="x"> Позиция по X </param>
-        /// <param name="y"> Позиция по Y </param>
-        /// <param name="vertices"> Массив вершин </param>
+        /// <param name="x"> X position </param>
+        /// <param name="y"> Y position </param>
+        /// <param name="vertices"> Vertex array </param>
         public void UpdateWallView(int x, int y, Vertex[] vertices)
         {
             var tile = GetWall(x, y);
@@ -875,10 +909,10 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Обновляем вид стенки, в мировых координатах
+        /// Update wall view by world coordinates
         /// </summary>
-        /// <param name="position"> Позиция стенки в мировых координатах </param>
-        /// <param name="vertices"> Массив вершин </param>
+        /// <param name="position"> Wall position in world coordinates </param>
+        /// <param name="vertices"> Vertex array </param>
         public void UpdateWallViewByWorldPosition(Vector2f position, Vertex[] vertices)
         {
             int x = (int)((position.X - Position.X) / Tile.Tile.TileSize);
@@ -888,43 +922,58 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Обновляем цвет стенки, в локальных координатах
+        /// Update wall color by local coordinates
         /// </summary>
-        /// <param name="color"> Цвет </param>
-        /// <param name="x"> Позиция по X </param>
-        /// <param name="y"> Позиция по Y </param>
-        public void UpdateWallColor(Color color, int x, int y)
+        /// <param name="color"> Color </param>
+        /// <param name="x"> X position </param>
+        /// <param name="y"> Y position </param>
+        public bool UpdateWallColor(Color color, int x, int y, bool useOtherChunk = false)
         {
-            var wall = GetWall(x, y);
+            var wall = GetWall(x, y, useOtherChunk);
 
-            if (wall != null && _chunkMeshsWall.ContainsKey(wall.Type))
+            if (wall != null && wall.PerentChunk != this)
             {
-                _chunkMeshsWall[wall.Type].UpdateTileColor(color, x, y);
+                wall.PerentChunk.UpdateWallColor(color, (int)wall.LocalPosition.X, (int)wall.LocalPosition.Y, useOtherChunk);
+
+                return true;
             }
+            else if (wall != null && wall.PerentChunk == this)
+            {
+                _chunkMeshsWall[wall.Type].UpdateTileColor(color, (int)wall.LocalPosition.X, (int)wall.LocalPosition.Y);
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
-        /// Получить цвет стенки, по локальным координатам
+        /// Get wall color by local coordinates
         /// </summary>
-        /// <param name="x"> Позиция по X </param>
-        /// <param name="y"> Позиция по Y </param>
+        /// <param name="x"> X position </param>
+        /// <param name="y"> Y position </param>
         /// <returns></returns>
-        public Color GetWallColor(int x, int y)
+        public Color GetWallColor(int x, int y, bool useOtherChunk = false)
         {
-            var wall = GetWall(x, y);
+            var wall = GetWall(x, y, useOtherChunk);
 
-            if (wall == null || !_chunkMeshsWall.ContainsKey(wall.Type))
-                return Color.Black;
+            if (wall != null && wall.PerentChunk != this)
+            {
+                return wall.PerentChunk.GetWallColor((int)wall.LocalPosition.X, (int)wall.LocalPosition.Y, useOtherChunk);
+            }
+            else if (wall != null && wall.PerentChunk == this)
+            {
+                return _chunkMeshsWall[wall.Type].GetTileColor((int)wall.LocalPosition.X, (int)wall.LocalPosition.Y);
+            }
 
-            return _chunkMeshsWall[wall.Type].GetTileColor(x, y);
+            return Color.Black;
         }
 
         /// <summary>
-        /// Рубим дерево
+        /// Chop tree
         /// </summary>
-        /// <param name="treeTile"> Плитка дерева </param>
-        /// <param name="x"> Позиция по X </param>
-        /// <param name="startY"> Позиция по Y </param>
+        /// <param name="treeTile"> Tree tile </param>
+        /// <param name="x"> X position </param>
+        /// <param name="startY"> Y position </param>
         /// <returns></returns>
         public bool ChoppingTree(Tile.Tile treeTile, int x, int startY)
         {
@@ -935,7 +984,7 @@ namespace VoxelGame.Worlds
 
                 if (treeTile != null)
                 {
-                    if(!SetTile(x, startY + y, TileType.None))
+                    if (!SetTile(x, startY + y, TileType.None))
                     {
                         _world.GetChunk(X, Y - 1)?.SetTile(x, ChunkSize + (startY + y), TileType.None);
                     }
@@ -946,7 +995,7 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Создать коллайдеры для чанка
+        /// Generate chunk colliders
         /// </summary>
         public void GenerateColliders()
         {
@@ -978,16 +1027,43 @@ namespace VoxelGame.Worlds
         }
 
         /// <summary>
-        /// Обновляем чанк
+        /// Update chunk
         /// </summary>
-        /// <param name="deltaTime"> Время кадра </param>
+        /// <param name="deltaTime"> Frame time </param>
         public void Update(float deltaTime)
         {
+            for(int i = 0; i < _tiles.Length; i++)
+            {
+                if(_tiles[i] == null)
+                    continue;
 
+                var tile = _tiles[i];
+
+                var tileUp = tile.UpTile;
+                var tileDown = tile.DownTile;
+                var tileLeft = tile.LeftTile;
+                var tileRight = tile.RightTile;
+
+                var tileUpLeft = GetTile((int)tile.LocalPosition.X - 1, (int)tile.LocalPosition.Y - 1, true);
+                var tileUpRight = GetTile((int)tile.LocalPosition.X + 1, (int)tile.LocalPosition.Y - 1, true);
+
+                if (tile.Type == TileType.Ground)
+                {
+                    var randDouble = Random.Shared.NextDouble();
+
+                    if (randDouble < 0.003) // 0.3% что в этом кадре появится трава
+                    {
+                        if ((tileUp == null || !tileUp.IsSolid) && ((tileLeft != null && tileLeft.Type == TileType.Grass) || (tileRight != null && tileRight.Type == TileType.Grass) || (tileUpLeft != null && tileUpLeft.Type == TileType.Grass) || (tileUpRight != null && tileUpRight.Type == TileType.Grass)))
+                        {
+                            SetTile((int)tile.LocalPosition.X, (int)tile.LocalPosition.Y, TileType.Grass);
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>
-        /// Рисуем стены чанка
+        /// Draw chunk walls
         /// </summary>
         /// <param name="target"></param>
         /// <param name="states"></param>
@@ -997,14 +1073,14 @@ namespace VoxelGame.Worlds
 
             foreach (var chunkMesh in _chunkMeshsWall)
             {
-                states.Texture = AssetManager.GetTexture(chunkMesh.Key.ToString());
+                states.Texture = TextureManager.GetTexture(chunkMesh.Key.ToString());
 
                 target.Draw(chunkMesh.Value.GetChunkMesh(), PrimitiveType.Triangles, states);
             }
         }
 
         /// <summary>
-        /// Рисуем стены чанка
+        /// Draw chunk tiles
         /// </summary>
         /// <param name="target"></param>
         /// <param name="states"></param>
@@ -1014,36 +1090,42 @@ namespace VoxelGame.Worlds
 
             foreach (var chunkMesh in _chunkMeshs)
             {
-                states.Texture = AssetManager.GetTexture(chunkMesh.Key);
+                states.Texture = TextureManager.GetTexture(chunkMesh.Key);
 
                 target.Draw(chunkMesh.Value.GetChunkMesh(), PrimitiveType.Triangles, states);
             }
         }
 
         /// <summary>
-        /// Получить AABB чанка
+        /// Get chunk AABB
         /// </summary>
         /// <returns> AABB </returns>
         public AABB GetAABB()
         {
-            return new AABB(Position.X, Position.Y, Position.X + ChunkSize * Tile.Tile.TileSize, Position.Y + ChunkSize * Tile.Tile.TileSize);
+            return new AABB(Position.X, Position.Y, ChunkSize * Tile.Tile.TileSize, ChunkSize * Tile.Tile.TileSize);
         }
 
         /// <summary>
-        /// Получить список колайдеров
-        /// <summary>
+        /// Get list of colliders
+        /// </summary>
         public List<AABB> GetColliders()
         {
             return _colliders;
         }
 
         /// <summary>
-        /// Руализуем интерфейс Drawable
+        /// Implement Drawable interface
         /// </summary>
         /// <param name="target"></param>
         /// <param name="states"></param>
         public void Draw(RenderTarget target, RenderStates states)
         {
         }
+
+        /// <summary>
+        /// Возвращает родительский объект мира, к которому принадлежит данный чанк.
+        /// </summary>
+        /// <returns>Объект мира, связанный с данным чанком.</returns>
+        public World GetWorld() => _world;
     }
 }

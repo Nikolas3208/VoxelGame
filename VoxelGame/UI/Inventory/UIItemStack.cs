@@ -1,7 +1,6 @@
 ﻿using SFML.Graphics;
 using SFML.System;
 using SFML.Window;
-using VoxelGame.Graphics;
 using VoxelGame.Item;
 using VoxelGame.Resources;
 
@@ -47,12 +46,22 @@ namespace VoxelGame.UI.Inventory
         {
             Item = infoItem;
 
-            rect = new RectangleShape(new Vector2f(ItemStakSize, ItemStakSize));
-            rect.Texture = AssetManager.GetTexture(Item.SpriteName);
+            var texture = TextureManager.GetTexture(Item.SpriteName);
+
+            float scale = 1.0f;
+
+            var size = new Vector2f(texture.Size.X, texture.Size.Y) / ItemStakSize;
+            if(size.X > size.Y)
+                scale = size.X;
+            else
+                scale = size.Y;
+
+            rect = new RectangleShape((Vector2f)texture.Size / scale);
+            rect.Texture = texture;
             rect.Origin = Size;
             rect.Position = Size / 2;
 
-            _text = new Text(ItemCount.ToString(), AssetManager.GetFont("Arial"));
+            _text = new Text(ItemCount.ToString(), TextureManager.GetFont("Arial"));
             _text.Position = rect.Position - new Vector2f(30, 20);
             _text.FillColor = Color.White;
             _text.CharacterSize = 16;
@@ -72,7 +81,7 @@ namespace VoxelGame.UI.Inventory
 
         public override void UpdateOver(float deltaTime)
         {
-            if(IsHovered)
+            if (IsHovered)
             {
                 DebugRender.AddText(UIManager.MousePosition - new Vector2f(0, 150), $"{Item.Name}\n" +
                                                              $"Описание: {Item.Description}\n" +

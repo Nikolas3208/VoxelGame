@@ -22,6 +22,12 @@ namespace VoxelGame.Worlds.Tile
 
         public override void UpdateView()
         {
+            if (DownTile == null)
+            {
+                PerentChunk.SetTile((int)LocalPosition.X, (int)LocalPosition.Y, TileType.None);
+                return;
+            }
+
             if (PerentTile != null)
             {
                 if (PerentTile == LeftTile && RightTile is not TileWorkbench)
